@@ -44,7 +44,11 @@ options("show.signif.stars"=F)
 
 ## set global chunk options
 opts_chunk$set(echo=FALSE,
+<<<<<<< HEAD
                cache=FALSE,
+=======
+               cache=TRUE,
+>>>>>>> master
                dpi=96,
                fig.height=5,
                fig.width=7,
@@ -124,7 +128,11 @@ rm(dir, file )
 
 
 ```{r label=data-setup, results='hide', cache=TRUE}
+<<<<<<< HEAD
 source( "data-setup-W2S.R" )
+=======
+source( "data-setup-W2S.R")
+>>>>>>> master
 ```
 
 # Introduction
@@ -159,7 +167,11 @@ observations plotted are those respondents who live less than
 `r I(format(plot_cutoff, big.mark=","))`m from school to make the plot more interpretable. The blue 
 line is a Generalised Additive Model smoother.  
 
+<<<<<<< HEAD
 ```{r walkstats, results='asis', cache=FALSE}
+=======
+```{r walkstats, results='asis'}
+>>>>>>> master
 walk_min <- 469 
 walk_50  <- 3100
 walk_max <- 5800 
@@ -189,7 +201,11 @@ The table below shows the number of missing values on variables to be included
 in the multivariate  analyses, which reduce the available sample size.
 
 <center>
+<<<<<<< HEAD
 ```{r mva, dependson="data-setup", cache=FALSE}
+=======
+```{r mva, dependson="data-setup"}
+>>>>>>> master
 # 2 obs  (9078, 9038) had missing aGender but non-missing gender; and missing 
 # age_cat but non-missing school year, DOB_day, DOB year ats. I entered 12.5 
 # for Age_Cat
@@ -197,7 +213,11 @@ in the multivariate  analyses, which reduce the available sample size.
 # Maybe they didn't finish the questionnaire?
 # 11 (9165, 4002, 1034, 10152, 9104, 3027, 9010, 8141, 8175, 3087, 5108) have
 # missing value on W2S section
+<<<<<<< HEAD
 mva( dat.ats, thr = 4)
+=======
+mva( dat.ats, thr= 4 )
+>>>>>>> master
 ```
 </center>
 
@@ -238,6 +258,7 @@ Socio-demographic characteristics of students who walked versus did not walk to
 school are presented in Tables 2, 3 and 4.
 
 <center>
+<<<<<<< HEAD
 ```{r label="descriptives-demos", cache=FALSE}
 require( Gmisc )
 n.w  <- table(dat.ats$ATS_f)[2]
@@ -245,6 +266,15 @@ n.dw <- table(dat.ats$ATS_f)[1]
 res  <- data_setup( dat.ats,  "ATS_f", c("Age_at_Survey", "gender", "eth3", 
                                          "BMI_2cat", "cars3", "NZDepCat3", 
                                          "tsdecision","Dist2School"))
+=======
+```{r label="descriptives-demos", dependson="data-setup" }
+require( Gmisc )
+n.w  <- table(dat.ats$W2S)[2]
+n.dw <- table(dat.ats$W2S)[1]
+res  <- data_setup( dat.ats,  "W2S", c("Age_at_Survey", "Sex", "eth3", 
+                                         "BMI_4cat", "cars3", "NZDepCat3", 
+                                         "tsdecision", "Dist"))
+>>>>>>> master
 (tab1 <- htmlTable(x = res$tab,
   rgroup   = res$rgroup,
   n.rgroup = res$ngroup,
@@ -263,9 +293,15 @@ The tables below are not intended for inclusion in manuscripts, they are just
 here for reference in case we decide to change anything else.
 
 <center>
+<<<<<<< HEAD
 ```{r label="descriptives-cat", cache=FALSE}
 require( Gmisc ) 
 res <- data_setup( dat.ats, "ATS_f", c("school", "BMI_f", "BMI_2cat","HMcars", "ScrGuide",
+=======
+```{r label="descriptives-cat"}
+require( Gmisc ) 
+res <- data_setup( dat.ats, "W2S", c("School", "BMI_4cat", "HMcars", "ScrGuide",
+>>>>>>> master
                                        "whodecides", "schiclose"))
 (tab1 <- htmlTable(x = res$tab,
   rgroup   = res$rgroup,
@@ -283,9 +319,15 @@ rm( tab1 )
 &nbsp;
 
 <center>
+<<<<<<< HEAD
 ```{r descriptives-cont, cache=FALSE}
 require( Gmisc )
 res <- data_setup( dat.ats , "ATS_f", names(dat.ats)[c(16, 13:14, 17:50)])
+=======
+```{r descriptives-cont}
+require( Gmisc )
+res <- data_setup( dat.ats , "W2S", names(dat.ats)[c(16, 13:14, 17:50)])
+>>>>>>> master
 (tab2 <- htmlTable(x = res$tab,
   rgroup   = res$rgroup,
   n.rgroup = res$ngroup,
@@ -369,7 +411,11 @@ their VIFs are well below 10. Also these variables have little explanatory power
 conceptually. Accordingly they were removed at the earliest stage of model 
 simplification.
 
+<<<<<<< HEAD
 ```{r ATS-m1, dependson=c("read-data"), results='hide', cache=TRUE}
+=======
+```{r ATS-m1, dependson=c("read-data"), results='hide'}
+>>>>>>> master
 options( contrasts=c("contr.treatment", "contr.treatment"))
 dat.m1   <- dat.ats[ complete.cases(dat.ats), ]
 m1.ddist <- datadist(dat.m1)
@@ -389,7 +435,11 @@ m1.gof <- LR.summary( m1, html = T, anova=F )
 ```
 
 <center>
+<<<<<<< HEAD
 ```{r m1_gof, cache=FALSE}
+=======
+```{r m1_gof}
+>>>>>>> master
 htmlTable(m1.gof$sf, 
           rnames=F, 
           align="r", 
@@ -411,7 +461,11 @@ level are shown below, in model 2. Although the goal was to reduce the set of
 correlates to only those significant at the 5% level, meeting that criteria 
 resulted in a set which was also significant at the 1% level.
 
+<<<<<<< HEAD
 ```{r ATS-m2, dependson=c("data-setup", "ATS-m1"), results='asis', cache=TRUE}
+=======
+```{r ATS-m2, dependson=c("data-setup", "ATS-m1"), results='asis'}
+>>>>>>> master
 attach(dat.ats)
 dat.m2 <- dat.ats[ complete.cases(W2S, Dist, 
                                   BMI_4cat, 
@@ -446,7 +500,11 @@ htmlTable(m2.gof$sf,
 Table `r I(options("table_counter"))` summarises the goodness of fit of Model 2.
 
 <center>
+<<<<<<< HEAD
 ```{r m_final_anova, results='asis', cache=FALSE}
+=======
+```{r m_final_anova, results='asis'}
+>>>>>>> master
 aov2html( m2 )
 ```
 </center>
@@ -459,7 +517,11 @@ strategy to avoid false positives and non-replicable scientific research
 [@ioannidis05].
 
 
+<<<<<<< HEAD
 ```{r ATS-final, dependson=c("ATS-m2", "data-setup"), results='asis', cache=TRUE}
+=======
+```{r ATS-final, dependson=c("ATS-m2", "data-setup"), results='asis'}
+>>>>>>> master
 m_final <- m2
 m_final_gof <- LR.summary( m_final, print=FALSE )
 #htmlTable(round(anova(m_final), 3))
@@ -473,7 +535,11 @@ inspected the calibration results with *n*=200, giving the same substantive
 conclusion.)
 
 <center>
+<<<<<<< HEAD
 ```{r label=ATS-final-validate, dependson="ATS-final",results='asis', cache=F} 
+=======
+```{r label=ATS-final-validate, dependson="ATS-final",results='asis'} 
+>>>>>>> master
 s <- validate( m_final, B=validate_n )
 colnames(s) <- c("Model", "Training", "Test", "Optimism", "Corrected", "n")
 rownames(s)[1] <- "R<sub>xy</sub>"
@@ -492,7 +558,11 @@ over-fitting, and are more likely to be generalisable to new samples from the
 same population.
 
 <center>
+<<<<<<< HEAD
 ```{r m2-results-table, cache=FALSE, results='asis', dependson="ATS-final"}
+=======
+```{r m2-results-table, results='asis', dependson="ATS-final"}
+>>>>>>> master
 #LR.summary(m_final, table=T, print=F)
 htmlTable( OR(m2, Dist=c(4000,5000)), 
           label="OR-M2", 
