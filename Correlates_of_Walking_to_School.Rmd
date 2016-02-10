@@ -123,7 +123,7 @@ rm(dir, file )
 ```
 
 
-```{r label=data-setup, results='hide', cache=FALSE}
+```{r label=data-setup, results='hide', cache=TRUE}
 source( "data-setup-W2S.R" )
 ```
 
@@ -300,6 +300,49 @@ rm( tab2 )
 </center>
 
 # Modeling
+Sandy asked me to do this in SPSS, but that software appears to be unable to
+deal with cluster sampling in the same way that Stata and R can, namely by
+adjusting the standard errors of the generalized linear mixed model.  Also 
+adopting an alternative approach using the GLMM module in SPSS and structuring
+the data as a hierarchical mixed linear model with schools as the top level 
+resulted in a model that could not be estimated due to numerical problems, 
+*even* for the most simple models, i.e. all the "moderators" (distance, age and
+sex) plus one other potential covariate. This is not solely an SPSS problem, as
+the same problems were encountered using SAS.  Perhaps SPSS can do what we need,
+but a day of research and trial-and-error could not discover that.
+ 
+So, given the tight deadline (4 days) and the fact that I already wasted one day
+findout out that SPSS couldn't do the job, I elected to use **R**.  The process
+was this:
+
+1. All observations in the file with a value of the variable **Include** equal 
+   to 1 were included.  No restrictions based on distance were used.
+1. Every potential covariate on the list that Sandy supplied was ran as a 
+   "univariate" model in the sense above.
+1. All the covariates that were significant at the 5% level were entered in a 
+   multivariate model.
+1. This model could not be estimated.  The offending variables were the Tg*, 
+   variables, i.e. "Travel in general".  These were removed and the model was
+   estimated to convergence.
+1. A stepwise process was followed (manually) whereby at each stage the variable
+   with the largest *p*-value was removed, the model re-estimated and the 
+   estimates compared.
+1. As soon as possible during this process, the Tg* variables were re-introduced.
+1. This procedure resulted in the models below, which show the variables that
+   remained significant at the 5% level, and the 1% level. Given the relatively
+   large sample size, large number of IVs and large number of hypothesis tests,
+   I strongly recommend using the 1% level.
+1. However, this model is **trivial**. It basically says what every social 
+   psychologist and consumer behaviourist knows: the best predictor of behaviour
+   is past behaviour and future intentions.  In this particular case, the only
+   additional explanatory variable is also trivial (distance).  All this tells
+   us precisely *nothing* about how behaviour could be modified for beneficial
+   outcomes.
+   
+
+
+   
+
 Notes:
 
 - The effect of distance on the probability of walking to school is clearly 
