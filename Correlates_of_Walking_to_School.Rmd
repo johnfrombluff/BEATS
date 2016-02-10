@@ -69,7 +69,7 @@ require(JMisc)
 ```
 
 # Notes to the research team
-**Update** I'm pressed for time and updating most of the material below is low
+**Update**: I'm pressed for time and updating most of the material below is low
 priority. So please ignore it and skip to the section "Modelling" for the 
 current work.
 
@@ -301,7 +301,7 @@ rm( tab2 )
 
 # Modeling
 Sandy asked me to do this in SPSS, but that software appears to be unable to
-deal with cluster sampling in the same way that Stata and R can, namely by
+deal with cluster sampling in the same way that Stata and **R** can, namely by
 adjusting the standard errors of the generalized linear mixed model.  Also 
 adopting an alternative approach using the GLMM module in SPSS and structuring
 the data as a hierarchical mixed linear model with schools as the top level 
@@ -318,7 +318,8 @@ was this:
 1. All observations in the file with a value of the variable **Include** equal 
    to 1 were included.  No restrictions based on distance were used.
 1. Every potential covariate on the list that Sandy supplied was ran as a 
-   "univariate" model in the sense above.
+   "univariate" model in the sense above (i.e. the variable in question, plus
+   the "moderators")
 1. All the covariates that were significant at the 5% level were entered in a 
    multivariate model.
 1. This model could not be estimated.  The offending variables were the Tg*, 
@@ -373,17 +374,17 @@ options( contrasts=c("contr.treatment", "contr.treatment"))
 dat.m1   <- dat.ats[ complete.cases(dat.ats), ]
 m1.ddist <- datadist(dat.m1)
 options(datadist="m1.ddist")
-m1 <- robcov(lrm(ATS_f ~ rcs( Dist2School, knots=3)
-          + BMI_f + n_cars + NZDepCat3 + school_decile_n 
+m1 <- robcov(lrm(W2S ~ rcs( Dist, knots=3)
+          + BMI_4cat + n_cars + NZDepCat3 + school_decile_n 
           + whodecides + control + schiclose 
-          + interesting + pleasant + boring + useful + safe + exercise 
+          + pleasant + boring + useful + safe + exercise 
           + onway + stuff + sched + planning + sweaty + unsafe + tired 
           + desire + confd 
           + adults + parents_walk + parents_safe 
           + parents_say + friends_say + school_says + cool + friends_dont 
           + weather + hills + regwalk 
           + NEStConnect + NGEsthetics, 
-          x=T, y=T, data=dat.m1 ), dat.m1$school)
+          x=T, y=T, data=dat.m1 ), dat.m1$School)
 m1.gof <- LR.summary( m1, html = T, anova=F )
 ```
 
@@ -412,20 +413,20 @@ resulted in a set which was also significant at the 1% level.
 
 ```{r ATS-m2, dependson=c("data-setup", "ATS-m1"), results='asis', cache=TRUE}
 attach(dat.ats)
-dat.m2 <- dat.ats[ complete.cases(ATS_f, Dist2School, 
-                                  BMI_2cat, 
+dat.m2 <- dat.ats[ complete.cases(W2S, Dist, 
+                                  BMI_4cat, 
                                   onway, sched, planning, 
                                   confd, parents_say, cool, regwalk), 
-                   c("ID", "ATS_f", "Dist2School",
-                     "BMI_2cat",
+                   c("ID", "W2S", "Dist",
+                     "BMI_4cat",
                      "onway", "sched", "planning",
                      "confd", "parents_say", "cool", "regwalk", 
-                     "school") ]
+                     "School") ]
 detach( dat.ats )
-sc <- dat.m2$school
+sc <- dat.m2$School
 m2.ddist <- datadist( dat.m2 )
 options( datadist = "m2.ddist", contrasts=c("contr.treatment", "contr.treatment") )
-m2 <- robcov(lrm(ATS_f ~ rcs(Dist2School, 3) + BMI_2cat
+m2 <- robcov(lrm( W2S ~ rcs(Dist, 3) + BMI_4cat
           + onway + sched + planning 
           + parents_say + cool + regwalk, 
           x=T, y=T, data=dat.m2 ), cluster=sc )
@@ -493,7 +494,7 @@ same population.
 <center>
 ```{r m2-results-table, cache=FALSE, results='asis', dependson="ATS-final"}
 #LR.summary(m_final, table=T, print=F)
-htmlTable( OR(m2, Dist2School=c(4000,5000)), 
+htmlTable( OR(m2, Dist=c(4000,5000)), 
           label="OR-M2", 
           caption="Odds ratios<sup>&dagger;</sup>",
           align="r",
@@ -506,7 +507,7 @@ Figure 2 below represents the odds ratios and their confidence intervals
 graphically.
 
 ```{r ATS-OR-plot, dependson="ATS-final",fig.width=7.5, fig.cap="Figure 2: Odds ratios"}
-plot(summary(m_final, Dist2School=c(4000,5000)))
+plot(summary(m_final, Dist=c(4000,5000)))
 ```
 
 Figure 3 below shows how the log odds of W2S varies over the range of the 
@@ -518,7 +519,7 @@ options(datadist="m1.ddist")
 res <- Predict(m_final)
 #plot(res[res$.predictor != "Dist2School", ])
 plot(res)
-m4.gof <- LR.summary(update(m_final, . ~ . - rcs(Dist2School,3)), print=F )
+m4.gof <- LR.summary(update(m_final, . ~ . - rcs(Dist, 3)), print=F )
 ```
 
 
@@ -526,7 +527,7 @@ m4.gof <- LR.summary(update(m_final, . ~ . - rcs(Dist2School,3)), print=F )
 The final model has absolutely outstanding predictive and discriminant validity, 
 and all  effects can be interpreted *ceteris paribus*. It also has good face 
 validity. Apart from the obvious effect of distance
-(`r I(OR.inline(OR(m_final, Dist2School=c(4000,5000))["Dist2School",], 3))`), 
+(`r I(OR.inline(OR(m_final, Dist=c(4000,5000))["Dist",], 3))`), 
 logistical factors: 
 
 - school being on the way to somewhere else,(**onway**, OR `r I(OR.print(m_final, "onway", 2))`) most probably work, or the school of a sibling) and
