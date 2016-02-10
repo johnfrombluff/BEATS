@@ -1,0 +1,539 @@
+---
+title: "Correlates of ATS"
+author: "John Williams"
+output: 
+  Grmd::docx_document:
+    fig_caption: TRUE
+    force_captions: TRUE
+    toc: TRUE
+  pdf_document:
+    toc: true
+    latex_engine: xelatex
+    keep_tex: true
+---
+
+```{r label=R-setup, echo=FALSE, include=FALSE, cache=FALSE}
+# bibliography: /home/john/Dropbox/Writing/bib/all-refs.bib
+require( ggplot2 )
+require( scales )
+require( Gmisc )
+require( rms )
+require( knitr )
+
+# Evaluate the figure caption after the plot
+knitr::opts_knit$set(eval.after='fig.cap')
+
+# Use the table counter that the htmlTable() provides
+options(table_counter = TRUE)
+
+# Use the figCapNo() with roman letters
+options(fig_caption_no_roman = TRUE)
+
+#theme_set( theme_gray( base_size = 10 ))
+#theme_update( legend.key.width = unit( 3,"line") )
+options(width=120)
+options("show.signif.stars"=F)
+
+## set global chunk options
+opts_chunk$set(echo=FALSE,
+               cache=TRUE,
+               dpi=96,
+               fig.height=6,
+               fig.width=8,
+               dev="png",
+               dev.args=list(type="cairo"),
+               fig.align='center',
+               fig.show='hold',
+               par=TRUE,
+               comment=NA,
+               background="wheat",
+               prompt=TRUE,
+               warning=FALSE,
+               message=FALSE)
+
+info   <- sessionInfo()
+r_ver  <- paste(info$R.version$major, info$R.version$minor, sep=".")
+barcol <- "wheat"
+source("/home/john/Dropbox/Writing/Software//R/logistic-regression-functions.R")
+```
+
+# Correlates of Active Transport to School
+
+## Data Setup
+```{r label="read-data", results='hide', echo=TRUE}
+require(foreign)
+dir  <- "/home/john/Dropbox/Research/Collaboration/BEATS/John/Data"
+file <- "BEATS_StudentS_DATA-All_150424.sav"
+dat <- read.spss( paste(dir, file, sep="/"), to.data.frame=TRUE)
+```
+
+```{r label=data-setup, results='hide', cache=TRUE}
+require( car )
+dat$ATS_n      <- recode( as.numeric(dat$ATvsMT), "1=0; 2=1") 
+dat$whodecides <- recode(dat$tsdecision, "'My parents'='Other(s)'; 'School'='Other(s)'")
+detach(package:car)
+dat$ATS_f <- factor( dat$ATS_n, labels=c("Motorised", "Active") )
+levels(dat$NZDepCat3) <- c("High", "Med", "Low")
+
+# Transform rating scale variables to numeric
+dat$tired         <- as.numeric(dat$WStired)
+dat$confd         <- as.numeric(dat$WSconf)
+dat$pshould       <- as.numeric(dat$WSpsh)
+dat$onway         <- as.numeric(dat$WCSone)
+dat$punsafe       <- as.numeric(dat$WSpunsafe)
+dat$chat          <- as.numeric(dat$WSchat)
+dat$time          <- as.numeric(dat$WStime)
+dat$sched         <- as.numeric(dat$WSbsched)
+dat$control       <- as.numeric(dat$WScontrol)
+dat$pwalk         <- as.numeric(dat$WSpwalk)
+dat$n_cars        <- as.numeric(dat$HMcars)
+dat$regwalk       <- as.numeric(dat$TgWalk)
+
+label(dat$tired) <- "Often too tired"
+
+# create ordered factors and drop unused levels in the process
+dat$school_decile   <- ordered(   dat$ScDecile)
+dat$school_decile_n <- as.numeric(dat$school_decile)
+
+# Make more print-friendly labels and levels
+levels(dat$HMcars)[5] <- "Four+"
+levels(dat$PAGuideQ)  <-c("No", "Yes")
+
+dat.ats <- dat[complete.cases(dat$ATvsMT, dat$Dist2School, dat$Age_Cat, 
+                          dat$aGender, dat$HMcars, dat$TgWalk,
+                          dat$tired, dat$confd, dat$pshould, dat$punsafe, dat$chat, dat$time, dat$onway,
+                          dat$TgWalk) & dat$boarder2 == "Not a boarder", ]
+
+dat.full <- dat[complete.cases(dat$Dist2School, dat$ATS_f), c("Dist2School", "ATS_f") ]
+cutoff <- 4800
+dat.ats <- dat.ats[ dat.ats$Dist2School <= cutoff, ]
+
+# Set up stuff for RMS functions
+attach(dat.ats)
+m1.ddist  <- datadist(ATS_n, Dist2School, regwalk, n_cars, tired, confd, pshould, onway, punsafe, chat, time, sched, control, pwalk, whodecides )
+detach(dat.ats)
+options(datadist="m1.ddist")
+```
+
+## Introduction
+
+This document contains preliminary analyses of correlates of ATS (**A**ctive 
+**T**ransport to **S**chool). We know from previous work (and common sense!) 
+that the most influential correlate is distance from school. But once that is 
+factored out, what else is influential?
+
+```{r label=ATS-Dist, dependson="data-setup", fig.cap="Figure 1: Empirical probability of ATS by distance from school"}
+emp <- NULL
+with( dat.full,
+      {
+        for ( i in 1:length(Dist2School ) ) 
+          emp[i] <- prop.table(table(ATS_f[ Dist2School < Dist2School[i]]))["Active"]
+        emp_prob <- data.frame( dist=Dist2School, true=ATS_f, prob=emp )
+        p <- ggplot( emp_prob, aes( dist, prob) ) 
+        p <- p + labs(x="Distance from School (m)", y="Probability of ATS", 
+                      title="Empirical probability of ATS")
+        p <- p + geom_point(size=1) 
+        p + geom_smooth(size=1)
+        }
+      )
+```
+
+The figure above shows the empirical probability of ATS, i.e. the proportion of 
+respondents who use ATS at each level of observed distance to school. The observations 
+plotted are those respondents who live less than 8km from school, however the analysis
+below is restricted to students who live less than `r I(cutoff)`m from school.
+
+## Descriptive statistics
+
+Firstly, let's look at the distributions of the variables we'll be dealing with. 
+The starting model will be the same model as previously used for the 
+*Journal of Science and Medicine in Sport* manuscript, so we need to assess 
+the distribution of the variables used in that model.
+
+The analyses below are restricted to the students who live less than 
+`r I(cutoff)`m from school, and who are not boarders. There are
+`r I(dim(dat.ats)[1])` students who fit that criterion.
+
+```{r label="descriptives", dependson="data-setup", fig.cap="Table 1"}
+attach( dat.ats )
+HTML <- TRUE
+d_age <- getDescriptionStatsBy( Age_Cat,         ATS_f, html=HTML, show_all_values=TRUE, statistics=TRUE)
+d_BMI <- getDescriptionStatsBy( BMI_2cat,        ATS_f, html=HTML, show_all_values=TRUE, statistics=TRUE)
+d_bik <- getDescriptionStatsBy( HMbike,          ATS_f, html=HTML, show_all_values=TRUE, statistics=TRUE)
+d_car <- getDescriptionStatsBy( HMcars,          ATS_f, html=HTML, show_all_values=TRUE, statistics=TRUE)
+d_con <- getDescriptionStatsBy( confd,           ATS_f, html=HTML, show_all_values=TRUE, statistics=TRUE)
+d_dec <- getDescriptionStatsBy( tsdecision,      ATS_f, html=HTML, show_all_values=TRUE, statistics=TRUE)
+d_dep <- getDescriptionStatsBy( NZDepCat3,       ATS_f, html=HTML, show_all_values=TRUE, statistics=TRUE)
+d_dis <- getDescriptionStatsBy( Dist2School,     ATS_f, html=HTML, show_all_values=TRUE, statistics=TRUE, header_count=TRUE )
+d_onw <- getDescriptionStatsBy( onway,           ATS_f, html=HTML, show_all_values=TRUE, statistics=TRUE)
+d_pag <- getDescriptionStatsBy( PAGuideQ,        ATS_f, html=HTML, show_all_values=TRUE, statistics=TRUE)
+d_pun <- getDescriptionStatsBy( punsafe,         ATS_f, html=HTML, show_all_values=TRUE, statistics=TRUE)
+d_psh <- getDescriptionStatsBy( pshould,         ATS_f, html=HTML, show_all_values=TRUE, statistics=TRUE)
+d_reg <- getDescriptionStatsBy( regwalk,         ATS_f, html=HTML, show_all_values=TRUE, statistics=TRUE)
+d_scd <- getDescriptionStatsBy( school_decile_n, ATS_f, html=HTML, show_all_values=TRUE, statistics=TRUE)
+d_scr <- getDescriptionStatsBy( ScrGuide,        ATS_f, html=HTML, show_all_values=TRUE, statistics=TRUE)
+d_sex <- getDescriptionStatsBy( aGender,         ATS_f, html=HTML, show_all_values=TRUE, statistics=TRUE)
+d_sib <- getDescriptionStatsBy( hsiblings,       ATS_f, html=HTML, show_all_values=TRUE, statistics=TRUE)
+d_tir <- getDescriptionStatsBy( tired,           ATS_f, html=HTML, show_all_values=TRUE, statistics=TRUE)
+d_tim <- getDescriptionStatsBy( time,            ATS_f, html=HTML, show_all_values=TRUE, statistics=TRUE)
+
+label(d_dis) <- "Distance to school (m)"
+label(d_age) <- "Age"
+label(d_sex) <- "Sex"
+label(d_BMI) <- "BMI"
+label(d_car) <- "Number of cars at home"
+label(d_bik) <- "Number of bikes available for ATS at home"
+label(d_sib) <- "Number of siblings"
+label(d_dep) <- "NZ Deprivation Index"
+label(d_tir) <- "Too tired to use ATS"
+label(d_psh) <- "Parents say I should use ATS"
+label(d_onw) <- "School is on the way to work"
+label(d_scr) <- "Meets screen time guidelines"
+label(d_pun) <- "My parents think its unsafe to use ATS"
+label(d_reg) <- "Travel in general: Walking"
+label(d_tim) <- "It takes too much time to walk to school"
+label(d_dec) <- "Who makes the decision on travel mode?"
+label(d_scd) <- "School decile (1--6=least deprived)"
+label(d_pag) <- "Physical activity guidelines"
+
+rgroup.2   <- c(label(d_dis), label(d_age), label(d_sex), label(d_BMI), 
+                label(d_car), label(d_dep), label(d_tir), label(d_psh), 
+                label(d_onw), label(d_scr), label(d_pun), label(d_reg), 
+                label(d_tim), label(d_sib), label(d_bik), label(d_dec), 
+                label(d_scd), label(d_pag))
+
+n.rgroup.2 <- c( NROW(d_dis),  NROW(d_age),  NROW(d_sex),  NROW(d_BMI),  
+                 NROW(d_car),  NROW(d_dep),  NROW(d_tir),  NROW(d_psh),  
+                 NROW(d_onw),  NROW(d_scr),  NROW(d_pun),  NROW(d_reg),  
+                 NROW(d_tim),  NROW(d_sib),  NROW(d_bik),  NROW(d_dec),
+                 NROW(d_scd),  NROW(d_pag))
+
+rgroup.1   <- c("Personal", "Household")
+n.rgroup.1 <- c(4, 3)
+  
+my_rgroup   <- rbind(  rgroup.1,   rgroup.2)
+my_n.rgroup <- rbind(n.rgroup.1, n.rgroup.2)
+options(table_counter=TRUE)
+options(table_counter_str="<strong>Table %s</strong>:")
+htmlTable(x = rbind( d_dis, d_age, d_sex, d_BMI, 
+                     d_car, d_dep, d_tir, d_psh, 
+                     d_onw, d_scr, d_pun, d_reg,
+                     d_tim, d_sib, d_bik, d_dec,
+                     d_scd, d_pag),
+  rgroup   = rgroup.2,
+  n.rgroup = n.rgroup.2,
+  caption  = paste("Individual and household potential correlates of ATS"),
+  tfoot    = "<span style='font-size: 80%'>&dagger;All continuous variables are reported with mean and standard deviation: x&#772; (SD). Categorical variables are reported in counts and percentages: count (%).</br>&ddagger; The <i>p</i>-values are from Fisher tests for categorical variables and Wilcoxon tests for continuous variables.</span>",
+  label    = "Table1",
+  rowlabel = "Variable<sup>&dagger;</sup>",
+  ctable   = TRUE)
+detach( dat.ats )
+```
+
+### Plots
+
+```{r label=plot-dist, fig.cap = "Figure 2: histogram of distance to school (bin width=100m)", dependson="data-setup"}
+ggplot(dat.ats, aes(x=Dist2School)) + geom_histogram( binwidth=100, fill=barcol ) + labs(x=NULL, title="Distance to school (m)")
+```
+
+```{r label=plots-age, fig.cap = "Figure 3: bar plot of cars", dependson="data-setup"}
+ggplot(dat.ats, aes(x=HMcars )) + geom_bar(fill=barcol) + labs( x=NULL, title="Home: n of cars, vans, trucks or utes")
+```
+
+```{r label=plots-tired, fig.cap="Figure 4: bar plot of tired", dependson="data-setup"}
+ggplot(dat.ats, aes(x=WStired))+geom_bar(fill=barcol) + labs( x=NULL, title="I often feel too tired to walk to school") + theme(axis.text.x=element_text(angle=45, hjust=1) )
+```
+
+```{r label=plots-onway, fig.cap="Figure 5: bar plot of onway", dependson="data-setup"}
+ggplot(dat.ats, aes(x=WCSone ))+geom_bar(fill=barcol) +labs(x=NULL, title=" It is easier for someone to drive me to school,\non the way to something else ")+ theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+```{r label=plots-sched, fig.cap="Figure 6: bar plot of sched", dependson="data-setup"}
+ggplot(dat.ats, aes(x=WSbsched  ))+geom_bar(fill=barcol) +labs(x=NULL, title="It is not convenient for me to walk to school\nbecause of my after-school schedule")+ theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+```{r label=plots-contr, fig.cap="Figure 7: bar plot of contr", dependson="data-setup"}
+ggplot(dat.ats, aes(x=WScontrol))+geom_bar(fill=barcol) +labs(x=NULL, title="How much personal control do you yourself\nhave over whether or not you walk to school?")+ theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+```{r label=plots-confd, fig.cap="Figure 8: bar plot of confd", dependson="data-setup"}
+ggplot(dat.ats, aes(x=WSconf  ))+geom_bar(fill=barcol) +labs(x=NULL, title="How confident are you that you could walk to school?")+ theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+```{r label=plots-pshld, fig.cap="Figure 9: bar plot of pshld", dependson="data-setup"}
+ggplot(dat.ats, aes(x=WSpsh  ))+geom_bar(fill=barcol) +labs(x=NULL, title="My parents or guardians think I should walk to school")+ theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+```{r label=plots-regwalk , fig.cap="Figure 10: bar plot of regwalk ", dependson="data-setup"}
+ggplot(dat.ats, aes(x=TgWalk))+geom_bar(fill=barcol) +labs(x=NULL, title="Travel in general: Walking")+ theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+
+## Modeling
+
+### Model 0
+The most influential variable influencing active transport to school is distance 
+to school. Hence, a logistic regression model with distance as the single 
+explanantory variable will be the "null" or baseline model for model development
+purposes. However, as we can see from Figure 1, the relationship between distance 
+and probagility of ATS is clearly nonlinear. So a null model should also accomodate 
+this fact. I chose to accomodate nonlinearity by use of a restricted cubic spline with 
+three knots.
+
+
+```{r label=ATS-M0, dependson="data-setup", results='asis', cache=TRUE} 
+options(knots=3, poly.degree=2)
+m0.dat <- dat.ats[complete.cases(dat.ats$ATS_f, dat.ats$Dist2School), 
+                  c("ATS_n", "ATS_f", "Dist2School") ]
+m0.ddist <- datadist(m0.dat)
+options( datadist = "m0.ddist" )
+m0     <- lrm( ATS_f ~ rcs(Dist2School,3), data=m0.dat, x=T, y=T ) 
+m0.gof <- LR.summary( m0, html = TRUE )
+```
+
+We can see that this model is reasonably good, for example the area under the 
+ROC curve is `r I(m0.gof$ROC)`%, and the Nagelkerke *R^2* is 
+`r I(m0.gof$Nagelkerke)`%. Also there are only a few influential observations.
+
+
+
+The summary table below shows the estimates and 95% confidence intervals for both
+the logit parameters and ORs. These effects are computed over the IQR of continuous variables
+as opposed to a 1-unit range, as is common with most statistical software.  
+
+```{r ATS-MO-summary, dependson=c("data-setup", "ATS-M0"), results='asis'}
+options(datadist="m1.ddist")
+myHTML( summary( m0 ) )
+```
+
+For comparison, the OR for distance, computed over a 1-unit (i.e. 1m) range, is
+`r I(round(exp(m0$coefficients)["Dist2School"], 4))`.  Because the units involved in 
+subsequent analyses are quite different, the IQR method allows a type of 
+standardisation, and hence is more intepretable. This parallels the use of betas and
+standardised betas in OLS regression.
+
+The ANOVA below shows likelihood ratio tests for all the parameter estimates. In
+this case, the *p*-values are indentical with those in the table above, because the
+single explanatory variable is continuous. However when an explanatory variable is
+categorical, the logit model estimates a separate *p*-value for each dummy term,
+while the ANOVA table inlcudes only a single *p*-value for all levels of the factor.
+
+```{r ATS-MO-anova, dependson="ATS-M0", results='asis'}
+myHTML(anova( m0 ))
+```
+
+When iteratively developing a model based in a single data set, it is well known
+that there is a severe danger of "over-fitting", i.e. developing a model that
+fits one data set well, but may not fit another random sample drawn from the 
+sample population.  Fortunately, methods exist to estimate the degree of 
+over-fitting, based on re-sampling (i.e. bootstrapping). This approach is known
+as validating a model.
+ 
+The validation results printed below show bias-corrected estimates of the 
+discriminant and predictive accuracy indices. We can see that these results
+indicate low optimism, i.e. the original indices are quite similar to the
+bias-corrected estimates.
+
+
+```{r ATS-MO-validate, dependson="ATS-M0",results='asis'}
+samples <- 200
+myHTML( validate( m0, B=samples ) )
+```
+
+The results above are based on `r I(samples)` bootstrap samples, as shown in the
+rightmost column. We can see that in this case, the original and bias-corrected
+fit indices are very similar, so we can be relatively confident that these results
+are not specific to the particular sample they were calculated from, i.e. they 
+are generalisable.
+
+### Model 1
+Now lets use the model from previously submitted manuscripts.
+
+The New Zealand Deprivation Index categories have been collapsed into three, and
+the baseline category is the lowest category (i.e highest deprivation).
+```{r label=ATS-M1, dependson="data-setup"} 
+attach( dat.ats )
+dat.m1 <- dat.ats[complete.cases(ATS_n, Dist2School, n_cars, tired, confd, pshould, 
+                             onway, punsafe, time, sched, control, pwalk, 
+                             regwalk, whodecides), 
+              c("ATS_f", "Dist2School", "n_cars", "tired", "confd", "pshould", 
+                "onway", "punsafe", "time", "sched", "control", "pwalk", 
+                "regwalk", "whodecides")]
+detach( dat.ats )
+attach( dat.m1 )
+      m1.ddist  <- datadist(ATS_f, Dist2School, n_cars, tired, confd, pshould, 
+                            onway, punsafe, time, sched, control, pwalk, 
+                            regwalk, whodecides )
+detach( dat.m1 )
+options(datadist="m1.ddist")
+m1 <- lrm( ATS_f ~ rcs(Dist2School, 3) + n_cars + tired + onway + confd + 
+             pshould, x=T, y=T, data=dat.m1) 
+```
+
+The fuller model has a much higher area under the ROC curve.
+
+```{r label=ATS-M1-print, dependson="ATS-M1",results='asis'} 
+options(datadist='m1.ddist')
+m1.gof  <- LR.summary( m1, html = TRUE) 
+```
+
+The effects of distance, more cars available to the household, being tired, 
+and it being easier for someone to drive the student to school on the way 
+to something else are negative, and the effects of being confident, having the 
+encouragement of parents and parental encouragement are positive.
+
+```{r label=ATS-M1-summary, dependson=c("data-setup", "ATS-M1"), results='asis'} 
+options(datadist='m1.ddist')
+myHTML( OR( m1) )
+```
+
+The ANOVA below shows the *p*-values for parameter estimates. All are significant
+at the 5% level, i.e. "strong evidence" of an effect.
+
+```{r label=ATS-M1-anova, dependson="ATS-M1", results='asis'} 
+myHTML(anova( m1 ) )
+```
+
+The bootstrap validation shown below indicates the bias-corrected indices
+are not very different from the model indices.
+
+```{r label=ATS-M1-validate, dependson="ATS-M1",results='asis'} 
+s <- validate( m1, B=200 )
+myHTML( s )
+```
+
+Model 0 has an AIC of `r I(round(AIC(m0)))`, while the Model 1 AIC is
+`r I(round(AIC( m1 )))`,  which is substantially lower.  We can also perform a 
+NHST for the reduction in deviance, which is strongly significant, as shown 
+below.
+
+```{r label=ATS-Model-Comparison, dependson=c("ATS-M0", "ATS-M1"), results='asis'}
+myHTML(lrtest( m0, m1 ))
+```
+
+```{r label=ATS-M1-confusion, dependson="ATS-M1"} 
+m1.gof <- LR.summary( m1, print = FALSE )
+```
+
+Model 1 has much higer area under ROC curve (`r I(m1.gof$ROC)`%) and 
+Nagelkerke *R^2* (`r  I(m1.gof$Nagelkerke)`%) than the null model.
+The balanced accuracy, sensitivity, specificity of model 1 are
+`r I(m1.gof$Accuracy)`, `r I(m1.gof$Sensitivity)` and 
+`r I(m1.gof$Specificity)`. These indices are evidence of outstanding goodness 
+of fit, discrimination and predictive accuracy.
+
+### Model 2
+Model 1 is essentially a replication of the OSSLS model previously published in 
+the *Journal of Science and Medicine in Sport*, but slightly different because 
+some variables are not present in both data sets.
+
+To develop the model further, all the variables in the **Walking to School** and
+**Walking  and Cycling to School**, **Travel in General**, **Physical Activity** 
+and **Nutrition** sections of the questionnaire were added to Model 1, one at a 
+time. This process resulted in two extra variables being added,  namely the 
+degree to which the student feels in control of the travel mode decision and 
+being a regular walker for general mobility. The latter variable has a low to 
+moderate correlation with the number of cars available to the household 
+(the Spearman rank correlation coefficient is
+`r I(round(cor(as.numeric(dat$HMcars), as.numeric(dat$TgWalk), use='p', met='sp'),2))`), 
+so including it alters the coefficient of cars, but the effects of each can 
+still be intepreted independently.
+
+
+```{r label=ATS-M2, dependson="ATS-M1", results='hide', cache=TRUE} 
+options(datadist="m1.ddist")
+m2 <- lrm( ATS_f ~ rcs(Dist2School,3) + n_cars + tired + onway + confd + 
+             pshould + control + regwalk, x=T, y=T, data=m1.dat )
+```
+
+Model 2 has slightly higher GOF indices, and a significantly lower deviance than 
+Model 1.
+```{r label=ATS-M2-print, dependson="ATS-M2", results='asis'} 
+m2.gof <- LR.summary( m2, html = TRUE )
+```
+
+The LR test indicates a significantly lower deviance, and the increase in GOF
+is substantively pleasing also (e.g. ROCs of `r I(m1.gof$ROC)` for model 1  vs. 
+`r I(m2.gof$ROC)` for model 2).
+
+```{r label=ATS-M2-M1, dependson="ATS-M2", results='asis'} 
+myHTML(lrtest(m1,m2) )
+```
+
+Odds ratios are shown below.
+```{r label=ATS-M2-OR, dependson="ATS-M2", results='asis'} 
+myHTML( OR( m2 ))
+```
+
+Models 1 & 2 meet the criterion of independent effects, i.e. the odds ratios 
+for the variables common to both models are very similar, and well within the
+95% confidence limits for each. Futhermore, the maximum VIF of model 2 is
+`r require(rms); I(max(rms::vif(m2)))`, providing further evidence that the 
+*ceteris paribus*  interpretation of the coefficients is valid.
+
+```{r OR-comparisons, results='asis', dependson=c("ATS-M1", "ATS-M2")}
+options(datadist="m1.ddist")
+m1.OR <- OR( m1 )$OR
+m2.OR <- OR( m2 )$OR
+m2.OR <- m2.OR[ -c(6:7) ]
+OR.names <- rownames(OR(m1))
+myHTML( data.frame(Variable=OR.names,'OR (m1)'=m1.OR, 'OR (m2)'=m2.OR, 'Difference'=(m2.OR - m1.OR), check.names=F ) )
+```
+
+The figure below show the relationship of the log odds of ATS to each of the 
+correlates in model 2, with shaded areas indicating 95% confidence intervals.
+
+```{r m2-plot, dependson=c("ATS-M2", "data-setup")}
+
+plot(Predict(m2))
+```
+
+Model 2 will be regarded as the final model for interpretation, unless there is 
+a compelling reason to alter it. Statistically, it is sound. However one may 
+wish to consider adding or replacing some variables on substantive grounds. 
+
+As a final comment, one may think that because distance has such a large 
+influence on ATS (The "null" model has an ROC of `r I(round(m0.gof$ROC))`%), 
+that the additional variables in the final model do not have much explanatory
+power in relative terms.  However this is not true.  Removing distance to school
+from the final model still gives an ROC value of 
+`r I(round(LR.summary(update(m2, . ~ . - rcs(Dist2School,3)))$ROC))`%, which is 
+still outstanding.
+
+## Interpretation of final model
+
+In summary, the final model has absolutely outstanding predictive and 
+discriminant validity, and all effects can be interpreted *ceteris paribus*. It 
+also has good face validity.  Obvious environmental and household factors (the 
+distance to school and availability of private motorised transport) decrease the 
+likelihood of ATS. Logistical factors (school being on the way to somewhere 
+else, most probably work, or the school of a sibling) also decrease the 
+likelihood of ATS. Being confident that one can walk to school, being a regular 
+walker in general, and having parental support or encouragement to use ATS 
+increase the likelihood of ATS.
+
+Perhaps the only non-obvious factor is being too tired to walk to school. Almost
+half (`r I(round(prop.table(table(dat$WS2tired))["Agree"]*100,1))`%) of students
+agreed or strongly agreed with this question. This suggests that parental factors
+of:
+
+- encouragement to use ATS
+- strongly encouraging sleep and exercise patterns of behaviour that prevent 
+  exessive tiredness in the morning;
+- encouraging walking for general mobility
+
+will be the most influential factors in raising  ATS rates among New Zealand 
+secondary school students. 
+
+These are, of course, components of a generally healthy lifestyle, However it 
+may be relevant to note that there were many other healthy lifestyle factors 
+that were unrelated to ATS. No variables in the nutrition or physical activity 
+sections of the questionnaire influence the likelihood of ATS, for example.
+
+## Colophon
+
+All analyses were performed using R (ver. `r r_ver`)[R Core Team, 2013] and 
+packages rms (ver. `r info$otherPkgs$rms$Version`) [F. Harrell, 2014] for 
+analysis, Gmisc for plot and table output (ver. `r info$otherPkgs$Gmisc$Version`), 
+and knitr (ver `r info$otherPkgs$knitr$Version`) [Xie, 2013] for reproducible 
+research.
