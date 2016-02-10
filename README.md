@@ -1,3 +1,3 @@
-This is the Readme for **SNP**
+= My BEATS Repository
 
-SNP is a **S**imple **N**otes **P**rocessor.
+This is just a playground for me to learn about **git** and **github**.  Nothing to see here, and no clever stuff to fork/steal.
