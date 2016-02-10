@@ -1,0 +1,926 @@
+\documentclass[a4paper]{article}
+\usepackage{longtable,booktabs,mathptmx,varioref,hyperref}
+
+\hypersetup{colorlinks=TRUE,linkcolor=blue}
+\title{Model search}
+\author{John Williams}
+
+\setcounter{secnumdepth}{9}
+\setcounter{tocdepth}{9}
+\newcommand{\R}{\textbf{\sffamily R}}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\thispagestyle{empty}
+\par
+\vspace{1em}
+TODO:
+\begin{itemize}
+\item Reconsider which variables  belong in which category of Panter et al.
+\item Figure out why correlates that are significant in the multivariate model aren't significant in univariate models.
+\end{itemize}
+
+<<label=R-setup, echo=FALSE, include=FALSE, cache=FALSE>>=
+# bibliography: /home/john/Dropbox/Writing/bib/all-refs.bib
+require( ggplot2 )
+require( scales )
+require( Gmisc )
+require( knitr )
+require( JMisc )
+require( xtable )
+require( dplyr )
+require( haven )
+# Evaluate the figure caption after the plot
+knitr::opts_knit$set(eval.after='fig.cap')
+
+# Use the table counter that the htmlTable() provides
+options(table_counter = TRUE)
+
+# Use the figCapNo() with roman letters
+options(fig_caption_no_roman = TRUE)
+
+#theme_set( theme_gray( base_size = 10 ))
+#theme_update( legend.key.width = unit( 3,"line") )
+options(width=80)
+options("show.signif.stars"=F)
+
+## set global chunk options
+opts_chunk$set(echo=FALSE,
+               cache=TRUE,
+               dpi=96,
+               fig.height=5,
+               fig.width=7,
+               prompt=F,
+               tidy=T,
+               highlight=T,
+               dev="png",
+               dev.args=list(type="cairo"),
+               fig.align='center',
+               fig.show='hold',
+               par=TRUE,
+               comment=NA,
+               background="wheat",
+               prompt=FALSE,
+               cache.extra = tools::md5sum('../data-setup.R'),
+               warning=FALSE,
+               message=FALSE)
+
+info   <- sessionInfo()
+r_ver  <- paste(info$R.version$major, info$R.version$minor, sep=".")
+barcol <- "wheat"
+@
+
+\clearpage
+\section*{Introduction}
+This document contains the results of the ``univariate'' models, i.e. each
+potential covariate, with interaction terms for each of the three moderators.
+The classification of variables into the categories defined by Panter et al. is
+shown in Table~\vref{tab:variables-in-slots}.
+
+Variables that we have that don't fit into the categories defined by Panter et
+al. include:
+
+\begin{itemize}
+\item some household characteristics (e.g. number of siblings)
+\item regwalk, i.e. the frequency of using walking for general mobility
+\end{itemize}
+
+The \R\ code below is just to show which data file is being used. All
+analyses were performed using \R\ version~\Sexpr{r_ver}, with package \textsf{rms}
+version~\Sexpr{packageVersion("rms")} for logistic regression modelling.
+
+<<label="read-data", echo=2:4, size="small", prompt=FALSE>>=
+dir_n  <- "/home/john/Dropbox/Research/Collaboration/BEATS/John/W2S"
+file_n <- "BEATS_SS_ForWalk2School_150507.sav"
+dat <- read_spss( fname(dir_n, file_n)  )
+rm(dir_n, file_n)
+@
+
+<<label=data-setup, results='hide'>>=
+source( "../data-setup-W2S.R")
+require( rms )
+ats.ddist <- datadist(dat.ats)
+options(datadist="ats.ddist")
+attach(dat.ats)
+@
+
+<<make-visible, cache=FALSE>>=
+attach( dat.ats )
+@
+
+The correlates are being examined in this way (rather than entering all variables
+at once) beause of numerical problems with the estimation algorithm. But even
+with this reduced approach, not all moderators could be tested simultaneously.
+These problems are noted in the rightmost column in the table below.
+
+\begin{center}
+\renewcommand\arraystretch{0.9}
+\small
+\begin{tabular}{llcccccccc}
+\toprule
+Block                     & Variable & Main effect & \multicolumn{3}{c}{Moderators} & All\\
+\cmidrule(r){4-6}
+                          &             &     & Distance & Age & Sex  &     \\
+\midrule
+\multicolumn{2}{l}{1. \textbf{Physical environment} }   \\
+1.1 Neighbourhood         & nothing?      &     &     &     &     &     \\
+1.2 Destination           & nothing?      &     &     &     &     &     \\
+1.3 Route                 & distance      &  y  &     &     &     &     \\
+2. \textbf{Individual factors} \\
+\multicolumn{2}{l}{2.1  \textit{Parental factors}}   \\
+2.1.1 Characteristics     & nothing?      &     &     &     &     &     \\
+2.1.2 Attitudes*          & parents\_say  &  n  &  n  &  n  &  n  &  n  \\
+                          & parents\_safe &  y  &  n  &  n  &  y  &  y  \\
+                          & school\_says  &  n  &  n  &  n  &  n  &  y  \\
+\multicolumn{2}{l}{2.2 \textit{Perceptions of environmental factors}} \\
+2.2.1 Parental perceptions& nothing \\
+2.2.2  Youth perceptions* & onway         &  n  &  n  &  n  &  n  &  y  \\
+                          & time          &  n  &  n  &  n  &  n  &  y  \\
+                          & stuff         &  n  &  y  &  n  &  n  &  n  \\
+                          & weather       &  n  &  n  &  n  &  n  &  n  \\
+                          & hills         &  n  &  y  &  n  &  n  &  n  \\
+                          & boring\_r     &  n  &  n  &  n  &  n  &  y  \\
+                          & NEStConnect   &  n  &  n  &  n  &  n  &  n  \\
+                          & NGEsthetics   &  y  &  y  &  n  &  y  &  n  \\
+\multicolumn{2}{l}{2.3 \textit{Youth factors}} \\
+2.3.1 Characteristics     & BMI           &  y  &     &     &     &     \\
+2.3.2 Attitudes*          & interesting   &  n  &  y  &  n  &  y  &  n  \\
+                          & pleasant      &  y  &  n  &  n  &  y  &  n  \\
+                          & boring        &  n  &  y  &  n  &  n  &  y  \\
+                          & healthy       &  n  &  n  &  n  &  n  &  n  \\
+                          & useful        &  y  &  n  &  n  &  y  &  n  \\
+                          & safe          &  y  &  n  &  n  &  n  &  n  \\
+                          & exercise      &  n  &  n  &  n  &  n  &  n  \\
+                          & schedule      &  n  &  n  &  n  &  n  &  y  \\
+                          & planning      &  n  &  n  &  n  &  n  &  y  \\
+                          & sweaty        &  n  &  n  &  n  &  n  &  y  \\
+                          & unsafe        &  n  &  n  &  n  &  n  &  y  \\
+                          & tired         &  n  &  n  &  n  &  n  &  y  \\
+                          & desire        &  y  &  n  &  y  &  n  &  y  \\
+                          & confident     &  n  &  n  &  n  &  n  &  n  \\
+                          & intention     &  n  &  n  &  n  &  n  &  n  \\
+                          & cool          &  n  &  n  &  n  &  n  &  y  \\
+                          & friends\_dont &  n  &  n  &  n  &  n  &  y  \\
+                          & TSlike        &  n  &  n  &  n  &  n  &  y  \\
+\multicolumn{2}{l}{2.4 \textit{The decision process*} } \\
+                          & whodecides    &  n  &  n  &  n  &  n  &  y  \\
+                          & control       &  y  &  n  &  n  &  y  &  y  \\
+3  \textbf{External factors}       & \emph{none}   \\
+4  Other                  & regwalk       &  y  \\
+                          & schiclose     &  n  \\
+\bottomrule
+\end{tabular}
+\end{center}
+So, the following moderated factors will be included:
+
+\begin{enumerate}
+\item Youth attitudes: parents\_safe*Sex,
+  stuff*Dist, hills*Dist,
+  NGEsthetics*Dist, NGEsthetics*Sex,
+  weather*Dist,
+  interesting*Dist, interesting*Sex,
+  pleasant*Sex,
+  boring*Dist,
+  useful*Sex,
+  desire*Age
+\item Other: parents\_safe*Sex, control*Sex
+\end{enumerate}
+
+The results of the multivariate models can be found in
+Section~\vref{sec:multivariate}.
+
+%\begin{table}[ht]
+%\scriptsize
+<<list-labels, results='asis'>>=
+vars <- data.frame( name=names(dat.ats), label=label(dat.ats), slot="", desc="", mod="", done="", stringsAsFactors = FALSE)
+vars["BMI_f",           c("slot", "desc", "mod")] <- c("2.3.1", "Youth characteristics", "")
+vars["HMcars",          c("slot", "desc", "mod")] <- c("2.1.1", "Parent characteristics", "")
+vars["NZDepCat3",       c("slot", "desc", "mod")] <- c("1.1",   "Attributes of neighbourhood", "")
+vars["PAGuideQ",        c("slot", "desc", "mod")] <- c("2.3.1", "Youth characteristics", "")
+vars["ScrGuide",        c("slot", "desc", "mod")] <- c("2.3.1", "Youth characteristics", "")
+vars["eth3",            c("slot", "desc", "mod")] <- c("2.3.1", "Youth characteristics", "")
+vars["whodecides",      c("slot", "desc", "mod")] <- c("2.4",   "Decision process", "Y")
+vars["schiclose",       c("slot", "desc", "mod")] <- c("4",     "Other", "?")
+vars["closest",         c("slot", "desc", "mod")] <- c("1.3",   "Attributes of route", "")
+vars["siblings",        c("slot", "desc", "mod")] <- c("2.1",   "Parent characteristics", "")
+vars["school_decile_n", c("slot", "desc", "mod")] <- c("1.2",   "Attributes of destination", "")
+vars["regwalk",         c("slot", "desc", "mod")] <- c("4",   "Other", "?")
+vars[c(17:36,41:43,44, 57),    c("slot", "desc", "mod")] <- c(rep("2.3.2", 25), rep("Youth attitudes",         25), rep("Y", 25) )
+vars[c(36:38,60),       c("slot", "desc", "mod")] <- c(rep("2.1.1",  4), rep("Parental characteristics", 4), rep("", 4 ) )
+vars[c(39:40),          c("slot", "desc", "mod")] <- c(rep("2.1.2",  2), rep("Parental attitudes",       2), rep("Y", 2 ) )
+vars[c(45:47, 49:50),   c("slot", "desc", "mod")] <- c(rep("2.2.2",  5), rep("Youth perceptions",        5), rep("Y", 5 ) )
+vars["control",         c("slot", "desc", "mod")] <- c("2.4",   "Decision process", "Y")
+vars["parents_say",  "done"] <- "y"
+vars["school_says",  "done"] <- "y"
+vars["parents_safe", "done"] <- "y"
+vars["onway",        "done"] <- "y"
+vars["time",         "done"] <- "y"
+vars["stuff",        "done"] <- "y"
+vars["sched",        "done"] <- "y"
+vars["planning",     "done"] <- "y"
+vars["sweaty",       "done"] <- "y"
+vars["unsafe",       "done"] <- "y"
+vars["tired",        "done"] <- "y"
+vars["confd",        "done"] <- "y"
+vars["desire",       "done"] <- "y"
+vars["intention",    "done"] <- "y"
+vars["cool",         "done"] <- "y"
+vars["friends_dont", "done"] <- "y"
+vars["friends_say",  "done"] <- "y"
+vars["parents_say",  "done"] <- "y"
+vars["TSlike",       "done"] <- "y"
+vars["weather",      "done"] <- "y"
+vars["hills",        "done"] <- "y"
+vars["boring_r",     "done"] <- "y"
+vars["NEStConnect",  "done"] <- "y"
+vars["NGEsthetics",  "done"] <- "y"
+vars["interesting",  "done"] <- "y"
+vars["pleasant",     "done"] <- "y"
+vars["boring",       "done"] <- "y"
+vars["healthy",      "done"] <- "y"
+vars["useful",       "done"] <- "y"
+vars["safe",         "done"] <- "y"
+vars["exercise",     "done"] <- "y"
+vars["whodecides",   "done"] <- "y"
+vars["control",      "done"] <- "y"
+#v <- vars[-c(1:4,12,15,52:56, 58,59,61,48), ]
+#v <- filter( vars, mod !="") %>% arrange(slot)
+print( xtable(vars, caption="Classification of variables into the Panter et al. framework", label="tab:variables-in-slots"), booktabs=TRUE, size="scriptsize")
+@
+%\normalsize
+%\end{table}
+
+\clearpage
+\section{Physical environment}
+We have very few measures of the environment.
+
+\subsection{Aspects of the neighbourhood}
+Nothing.
+\subsection{Aspects of the destination}
+Nothing.
+\subsection{Aspects of the route}
+\subsubsection{\Sexpr{label(Dist2School)}}
+\small
+<<uni_dist, dependson=c("read-data", "data-setup"), results='asis'>>=
+uni_dist <- robcov( lrm( W2S ~ Dist, x=T, y=T), School )
+print( uni_dist, latex=TRUE, title='')
+@
+\normalsize
+
+
+\clearpage
+\section{Individual factors}
+\subsection{Parental factors}
+\subsubsection{Parental characteristics}
+
+\subsubsection{Parental attitudes}
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(parents_say)}}
+\small
+<<uni_parents_say, dependson=c("read-data", "data-setup"), results='asis'>>=
+uni_parents_say_a <- robcov( lrm( W2S ~ parents_say*Dist + parents_say*Sex, x=T, y=T ), School)
+uni_parents_say_b <- robcov( lrm( W2S ~ parents_say*Sex  + parents_say*Age, x=T, y=T ), School)
+print( uni_parents_say_a, latex=TRUE, title='' )
+print( uni_parents_say_b, latex=TRUE, title='' )
+@
+\normalsize
+
+\paragraph{\Sexpr{Hmisc::label(parents_safe)}}
+\small
+<<uni_parents_safe, dependson=c("read-data", "data-setup" ), results='asis'>>=
+uni_parents_safe_a <- robcov( lrm( W2S ~ parents_safe*Dist + parents_safe*Sex + parents_safe*Age, x=T, y=T), School)
+print(uni_parents_safe_a, latex=TRUE, title='' )
+@
+\normalsize
+
+
+\clearpage
+\subsection{Perceptions of the environment}
+\subsubsection{Parental perceptions}
+
+\clearpage
+\subsubsection{Youth perceptions}
+\paragraph{\Sexpr{Hmisc::label(onway)}}
+\small
+<<uni_onway, dependson=c("read-data", "data-setup"), results='asis'>>=
+uni.onway.a <- robcov(lrm( W2S ~ onway*Dist + onway*Sex  + onway*Age, x=T, y=T ), School)
+print( uni.onway.a, latex=TRUE, title='' )
+@
+\normalsize
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(time)}}
+\small
+<<uni_time, dependson=c("read-data", "data-setup"), results='asis'>>=
+uni.time.a <- robcov(lrm( W2S ~ time*Dist + time*Sex  + time*Age, x=T, y=T ), School)
+print(uni.time.a, latex=TRUE, title='' )
+@
+\normalsize
+
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(weather)}}
+\small
+<<uni_weather, dependson=c("read-data", "data-setup"), results='asis'>>=
+uni.weather.a <- robcov(lrm( W2S ~ weather*Dist + weather*Sex, x=T, y=T), School)
+uni.weather.b <- robcov(lrm( W2S ~ weather*Sex  + weather*Age, x=T, y=T), School)
+print(uni.weather.a, latex=TRUE, title='' )
+print(uni.weather.b, latex=TRUE, title='')
+@
+\normalsize
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(hills)}}
+\small
+<<uni_hills, dependson=c("read-data", "data-setup"), results='asis'>>=
+uni.hills.a <- robcov(lrm( W2S ~ hills*Dist + hills*Sex+ hills*Age, x=T, y=T ), School)
+print(uni.hills.a, latex=TRUE, title='' )
+@
+\normalsize
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(NEStConnect)}}
+\small
+<<uni_NEStConnect, dependson=c("read-data", "data-setup"), results='asis'>>=
+uni.NEStConnect.a <- robcov(lrm( W2S ~ NEStConnect*Dist + NEStConnect*Sex, x=T, y=T ), School)
+uni.NEStConnect.b <- robcov(lrm( W2S ~ NEStConnect*Sex  + NEStConnect*Age, x=T, y=T ), School)
+print(uni.NEStConnect.a, latex=TRUE, title='' )
+print(uni.NEStConnect.b, latex=TRUE, title='' )
+@
+\normalsize
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(NGEsthetics)}}
+\small
+<<uni_NGEsthetics, dependson=c("read-data", "data-setup"), results='asis'>>=
+uni.NGEsthetics.a <- robcov(lrm( W2S ~ NGEsthetics*Dist + NGEsthetics*Sex, x=T, y=T ), School)
+uni.NGEsthetics.b <- robcov(lrm( W2S ~ NGEsthetics*Sex  + NGEsthetics*Age, x=T, y=T ), School)
+print(uni.NGEsthetics.a, latex=TRUE, title='' )
+print(uni.NGEsthetics.b, latex=TRUE, title='')
+@
+\normalsize
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(interesting)}}
+\small
+<<uni_interesting, dependson=c("read-data"), results='asis'>>=
+uni.interesting.a <- robcov( lrm( W2S ~ interesting*Dist + interesting*Sex, x=T, y=T ), School)
+uni.interesting.b <- robcov( lrm( W2S ~ interesting*Sex  + interesting*Age, x=T, y=T ), School)
+print(uni.interesting.a, latex=TRUE, title='' )
+print(uni.interesting.b, latex=TRUE, title='')
+@
+\normalsize
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(pleasant)}}
+\small
+<<uni_pleasant, dependson=c("read-data"), results='asis'>>=
+uni.pleasant.a <- robcov( lrm( W2S ~ pleasant*Dist + pleasant*Sex, x=T, y=T ), School)
+uni.pleasant.b <- robcov( lrm( W2S ~ pleasant*Sex  + pleasant*Age, x=T, y=T ), School)
+print(uni.pleasant.a, latex=TRUE, title='' )
+print(uni.pleasant.b, latex=TRUE, title='')
+@
+\normalsize
+
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(boring)}}
+\small
+<<uni_boring, dependson=c("read-data"), results='asis'>>=
+uni.boring.a <- robcov( lrm( W2S ~ boring*Dist +  boring*Sex+  boring*Age, x=T, y=T ), School)
+print(uni.boring.a, latex=TRUE, title='' )
+@
+\normalsize
+
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(boring_r)}}
+\small
+<<uni_boring_r, dependson=c("read-data"), results='asis'>>=
+uni.boring_r.a <- robcov(lrm( W2S ~ boring_r*Dist +  boring_r*Sex+  boring_r*Age, x=T, y=T ), School)
+print(uni.boring_r.a, latex=TRUE, title='' )
+@
+\normalsize
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(healthy)}}
+\small
+<<uni_healthy, dependson=c("read-data"), results='asis'>>=
+uni.healthy.a <- robcov(lrm( W2S ~ healthy*Dist +  healthy*Sex, x=T, y=T ), School)
+uni.healthy.b <- robcov(lrm( W2S ~ healthy*Sex  +  healthy*Age, x=T, y=T ), School)
+print(uni.healthy.a, latex=TRUE, title='' )
+print(uni.healthy.b, latex=TRUE, title='')
+@
+\normalsize
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(useful)}}
+\small
+<<uni_useful, dependson=c("read-data"), results='asis'>>=
+uni.useful.a <- robcov(lrm( W2S ~ useful*Dist + useful*Sex, x=T, y=T ), School)
+uni.useful.b <- robcov(lrm( W2S ~ useful*Sex  + useful*Age, x=T, y=T ), School)
+print(uni.useful.a, latex=TRUE, title='' )
+print(uni.useful.b, latex=TRUE, title='')
+@
+\normalsize
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(safe)}}
+\small
+<<uni_safe, dependson=c("read-data"), results='asis'>>=
+uni.safe.a <- robcov( lrm( W2S ~ safe*Dist + safe*Sex, x=T, y=T ), School)
+uni.safe.b <- robcov( lrm( W2S ~ safe*Sex  + safe*Age, x=T, y=T ), School)
+print(uni.safe.a, latex=TRUE, title='' )
+print(uni.safe.b, latex=TRUE, title='')
+@
+\normalsize
+
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(exercise)}}
+\small
+<<uni_exercise, dependson=c("read-data"), results='asis'>>=
+uni.exercise.a <- robcov( lrm( W2S ~ exercise*Dist + exercise*Sex, x=T, y=T ), School)
+uni.exercise.b <- robcov( lrm( W2S ~ exercise*Sex  + exercise*Age, x=T, y=T ), School)
+print(uni.exercise.a, latex=TRUE, title='' )
+print(uni.exercise.b, latex=TRUE, title='')
+@
+\normalsize
+
+
+\clearpage
+\subsection{Youth factors}
+\subsubsection{Youth characteristics}
+\paragraph{\Sexpr{Hmisc::label(BMI_f)}}
+\small
+<<uni_BMI, dependson=c("read-data", "data-setup"), results='asis'>>=
+uni.BMI <- robcov( lrm( W2S ~ BMI_f, x=T, y=T ), School)
+print(uni.BMI, latex=TRUE, title='' )
+@
+\normalsize
+
+
+\subsubsection{Youth attitudes}
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(stuff)}}
+\small
+<<uni_stuff, dependson=c("read-data", "data-setup"), results='asis'>>=
+uni.stuff.a <- robcov(lrm( W2S ~ stuff*Dist + stuff*Sex+ stuff*Age, x=T, y=T ), School)
+print(uni.stuff.a, latex=TRUE, title='' )
+@
+\normalsize
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(sched)}}
+\small
+<<uni_sched, dependson=c("read-data"), results='asis'>>=
+uni_sched_a <- robcov(lrm( W2S ~ sched*Dist  + sched*Age+ sched*Sex, x=T, y=T ), School)
+print(uni_sched_a, latex=TRUE, title='')
+@
+\normalsize
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(planning)}}
+\small
+<<uni_planning, dependson=c("read-data"), results='asis'>>=
+uni_planning <- robcov( lrm( W2S ~ planning*Dist + planning*Age + planning*Sex, x=T, y=T ), School)
+print(uni_planning, latex=TRUE, title='')
+@
+\normalsize
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(sweaty)}}
+\small
+<<uni_sweaty, dependson=c("read-data"), results='asis'>>=
+uni_sweaty <- robcov( lrm( W2S ~ sweaty*Dist + sweaty*Age + sweaty*Sex, x=T, y=T ), School)
+print(uni_sweaty, latex=TRUE, title='')
+@
+\normalsize
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(unsafe)}}
+\small
+<<uni_unsafe, dependson=c("read-data"), results='asis'>>=
+uni_unsafe <- robcov( lrm( W2S ~ unsafe*Dist + unsafe*Age + unsafe*Sex, x=T, y=T ), School)
+print(uni_unsafe, latex=TRUE, title='')
+@
+\normalsize
+
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(tired)}}
+\small
+<<uni_tired, dependson=c("read-data"), results='asis'>>=
+uni_tired_a <- robcov(lrm( W2S ~ tired*Dist + tired*Sex+ tired*Age, x=T, y=T ), School)
+print(uni_tired_a, latex=TRUE, title='')
+@
+\normalsize
+
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(desire)}}
+\small
+<<uni_desire, dependson=c("read-data"), results='asis'>>=
+uni_desire <- robcov( lrm( W2S ~ desire*Dist + desire*Age + desire*Sex, x=T, y=T ), School)
+print(uni_desire, latex=TRUE, title='')
+@
+\normalsize
+
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(confd)}}
+\small
+<<uni_confd, dependson=c("read-data"), results='asis'>>=
+uni_confd_a <- robcov(lrm( W2S ~ confd*Dist + confd*Sex, x=T, y=T ), School)
+uni_confd_b <- robcov(lrm( W2S ~ confd*Sex  + confd*Age, x=T, y=T ), School)
+print(uni_confd_a, latex=TRUE, title='')
+print(uni_confd_b, latex=TRUE, title='')
+@
+\normalsize
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(intention)}}
+\small
+<<uni_intention, dependson=c("read-data"), results='asis'>>=
+uni_intention_a <- robcov( lrm( W2S ~ intention*Dist + intention*Sex, x=T, y=T ), School)
+uni_intention_b <- robcov( lrm( W2S ~ intention*Sex + intention*Age, x=T, y=T ), School)
+print(uni_intention_a, latex=TRUE, title='')
+print(uni_intention_b, latex=TRUE, title='')
+@
+\normalsize
+
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(school_says)}}
+\small
+<<uni_school_says, dependson=c("read-data"), results='asis'>>=
+uni_school_says_a <- robcov(lrm( W2S ~ school_says*Dist + school_says*Sex + school_says*Age, x=T, y=T ), School)
+print(uni_school_says_a, latex=TRUE, title='')
+@
+\normalsize
+
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(cool)}}
+\small
+<<uni_cool, dependson=c("read-data"), results='asis'>>=
+uni_cool <- robcov( lrm( W2S ~ cool*Dist + cool*Age + cool*Sex, x=T, y=T ), School)
+print(uni_cool, latex=TRUE, title='')
+@
+\normalsize
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(friends_dont)}}
+\small
+<<uni_friends_dont, dependson=c("read-data"), results='asis'>>=
+uni_friends_dont <- robcov( lrm( W2S ~ friends_dont*Dist + friends_dont*Age + friends_dont*Sex, x=T, y=T ), School)
+print(uni_friends_dont, latex=TRUE, title='')
+@
+\normalsize
+
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(TSlike)}}
+\small
+<<uni_TSlike, dependson=c("read-data"), results='asis'>>=
+uni_TSlike <- robcov( lrm( W2S ~ TSlike*Dist + TSlike*Age + TSlike*Sex, x=T, y=T ), School)
+print(uni_TSlike, latex=TRUE, title='')
+@
+\normalsize
+
+\clearpage
+\subsection{The decision process}
+\subsubsection{\Sexpr{Hmisc::label(whodecides)}}
+\small
+<<uni_whodecides, dependson=c("read-data"), results='asis'>>=
+uni_whodecides <- robcov( lrm(W2S ~ whodecides*Dist + whodecides*Age + whodecides*Sex, x=T, y=T), School)
+print(uni_whodecides, latex=TRUE, title='')
+@
+\normalsize
+
+\clearpage
+\paragraph{\Sexpr{Hmisc::label(control)}}
+\small
+<<uni_control, dependson=c("read-data"), results='asis'>>=
+uni_control_a <- robcov( lrm( W2S ~ control*Dist + control*Sex+control*Age, x=T, y=T ), School)
+print(uni_control_a, latex=TRUE, title='')
+@
+\normalsize
+
+\section{External factors}
+We do not have any measures of external factors as described by Panter et al.
+
+\clearpage
+\section{Other factors}
+These are factors that don't obviously fit into one of the categories described
+by Panter et al.
+
+\subsection{\Sexpr{Hmisc::label(regwalk)}}
+<<uni_regwalk, dependson=c("read-data"), results='asis'>>=
+uni_regwalk <- robcov( lrm( W2S ~ Dist + regwalk, x=T, y=T ), School)
+print(uni_regwalk, latex=TRUE, title='')
+@
+
+
+\clearpage
+\subsection{\Sexpr{Hmisc::label(schiclose)}}
+<<uni_schiclose, dependson=c("read-data"), results='asis'>>=
+uni_schiclose <- robcov( lrm( W2S ~ Dist + schiclose, x=T, y=T ), School)
+print(uni_schiclose, latex=TRUE, title='')
+@
+
+
+
+\clearpage
+\section{Multivariate models}
+\label{sec:multivariate}
+\subsection{Physical Environment}
+<<block_1, results="asis", dependson="data-setup">>=
+mult_block_1 <- robcov( lrm( W2S ~ Dist, x=T, y=T ), School)
+print(mult_block_1, latex=TRUE, title='Block 1')
+@
+
+\clearpage
+\subsection{Individual Factors}
+\subsubsection{Parental factors}
+
+When \texttt{parents\_safe} was added to Block 1, the interaction term with
+Distance was not significant, and was hence removed.
+
+<<block_2, results='asis', dependson="block_1">>=
+dat.ats <- dat.ats[ complete.cases(dat.ats$W2S, dat.ats$Dist, dat.ats$School
+    , dat.ats$parents_safe, dat.ats$parents_say, dat.ats$sched, dat.ats$boring, dat.ats$planning, dat.ats$pleasant
+    #, dat.ats$NGEsthetics
+    ), ]
+dd <- datadist(dat.ats)
+options(datadist="dd")
+detach(dat.ats)
+attach(dat.ats)
+
+mult_block_2 <- robcov(  update(mult_block_1, . ~ . + parents_safe*Sex), School)
+print(mult_block_2, latex=TRUE, title='Block 2')
+@
+
+There are \Sexpr{mult_block_1$stats["Obs"] - mult_block_2$stats["Obs"] } fewer
+cases in this model because of missing values for \texttt{parents\_safe}. The
+likelihood ratio test shows that this model has significantly less deviance than
+the previous model.The $C$ index, i.e. area under the ROC, is
+\Sexpr{ fmt(mult_block_1$stats["C"], 3) } for Block 1
+vs.
+\Sexpr{ fmt(mult_block_2$stats["C"], 3) } for Block 2.
+
+
+<<m1m2-test, dependson=c("block_1", "block_2")>>=
+options(digits=2)
+lrtest(mult_block_1, mult_block_2)
+@
+
+
+\clearpage
+\subsubsection{Perceptions of the environment}
+There was a dramatic reduction in sample size due to the large number of missing
+values for \texttt{NGEsthetics} (down to $n=975$), however neither the main
+effect of that variable nor any of its moderators were significant, hence it was
+removed and the model was run again. Terms that were no longer significant in
+this block are \texttt{interesting} and its moderators, and \texttt{boring*Dist}.
+
+<<block_3, results='asis', dependson=c("block_2")>>=
+detach(dat.ats)
+attach(dat.ats)
+mult_block_3 <- robcov( update(mult_block_2, . ~ .
+                               + hills*Dist
+                               + weather
+                               + pleasant*Sex
+                                ),  School)
+print(mult_block_3, latex=TRUE, title='Block 3')
+@
+
+The $C$ index is
+\Sexpr{ fmt(mult_block_2$stats["C"], 3) } for Block 3
+vs.
+\Sexpr{ fmt(mult_block_3$stats["C"], 3) } for Block 3, and the likelihood ratio
+test confirms the reduction in deviance is significant.
+
+\small
+<<m2m3-test, dependson=c("block_3")>>=
+options(digits=2)
+lrtest( mult_block_2, mult_block_3)
+@
+\normalsize
+
+\clearpage
+\subsubsection{Youth factors}
+\paragraph{Characteristics}
+BMI
+
+\footnotesize
+<<block-3.5, dependson=c("block_3"), results='asis'>>=
+attach(dat.ats)
+mult_block_4 <- robcov( update(mult_block_3, . ~ . + BMI_f))
+print(mult_block_4, latex=TRUE, title='Block 4')
+@
+\normalsize
+
+\clearpage
+\paragraph{Attitudes}
+
+<<block_4, results='asis', dependson=c("block_3")>>=
+# Had to remove boring*Age, desire*Age
+detach(dat.ats)
+attach(dat.ats)
+mult_block_5 <- robcov( update(mult_block_3, . ~ .
+   + desire*Age
+   - hills:Dist - hills
+   - weather
+  ),
+  School)
+print(mult_block_5, latex=TRUE, title='Block 5')
+@
+
+
+The $C$ indices are
+\Sexpr{ fmt(mult_block_3$stats["C"], 3) } for Block 3
+vs.
+\Sexpr{ fmt(mult_block_5$stats["C"], 3) } for Block 5. The likelihood ratio
+test cannot be performed because the models are not nested.
+%confirms the difference is significant.
+
+\small
+<<m3m4-test, dependson=c("block_3", "block_4")>>=
+#options(digits=2)
+#lrtest(mult_block_3, mult_block_5)
+@
+\normalsize
+
+\clearpage
+\subsection{The decision process}
+
+<<block_6, results='asis', dependson=c("block_4")>>=
+detach(dat.ats)
+attach(dat.ats)
+mult_block_6 <- robcov( update(mult_block_5, . ~ . + control*Sex), School )
+print(mult_block_6, latex=TRUE, title='Block 6')
+@
+
+
+\footnotesize
+<<m4m5-test, dependson=c("block_4", "block_5")>>=
+options(width=80, digits=3)
+lrtest(mult_block_5, mult_block_6)
+@
+\normalsize
+The likelihood ratio test is significant, and the
+difference is substantial (e.g. the $C$ indices
+\Sexpr{ fmt(mult_block_4$stats["C"], 3) } for Block 5
+vs.
+\Sexpr{ round(mult_block_6$stats["C"], 3) } for Block 6.
+
+
+\clearpage
+\subsection{Other factors}
+
+\footnotesize
+<<block_7, results='asis', dependson=c("block_6")>>=
+dat.ats <- dat.ats[complete.cases((dat.ats$regwalk)), ]
+dd <- datadist(dat.ats)
+options(datadist="dd")
+detach(dat.ats)
+attach(dat.ats)
+
+mult_block_7a <- robcov( update( mult_block_6, . ~ . + regwalk
+                                - control:Sex
+                                - desire:Age -Age), School)
+mult_block_7b <- robcov( lrm( W2S ~ rcs(Dist, 3) + parents_safe*Sex + pleasant*Sex + desire + control + regwalk, x=T, y=T), School)
+print(mult_block_7a, latex=TRUE, title='Block 7a')
+print(mult_block_7b, latex=TRUE, title='Block 7b')
+@
+\normalsize
+
+\footnotesize
+% , results='asis'
+<<fm>>=
+#latex(summary(mult_block_7), file='')
+summary(mult_block_7b)
+@
+\normalsize
+
+The likelihood ratio test is significant, and in  substantive terms the
+difference is also significant (e.g. the $C$ indices
+\Sexpr{ fmt(mult_block_6$stats["C"]) } for Block 6
+vs.
+\Sexpr{ fmt(mult_block_7b$stats["C"]) } for Block 7b).
+
+\small
+<<final-test, dependson=c("block_6", "block_7")>>=
+options(digits=2)
+lrtest( mult_block_6, mult_block_7b )
+mult_final <- mult_block_7b
+@
+
+
+\clearpage
+\section{The final model}
+Summary:
+<<fm_sum, dependson="final-test">>=
+LR.summary( mult_final  )
+@
+
+Expressed as \textit{simple} odds ratios (i.e. non-comparable):
+
+<<fm-OR, dependson="final-test">>=
+#OR( mult_final, "dd")
+exp(coef(mult_final))
+@
+
+\clearpage
+\section{Summary}
+The final model should be compared with the final model developed by me, using
+the opposite approach, i.e. entering all potential covariates first and then
+removing them one-by one.
+
+\begin{center}
+\begin{tabular}{lllll}
+\toprule
+Variable     & JW & JS \\
+\midrule
+Distance     & y  & y \\
+regwalk      & y  & y \\
+\midrule
+pleasant     & n  & y \\
+desire       & n  & y \\
+control      & n  & y \\
+Sex          & n  & y \\
+parents safe & n  & y \\
+\midrule
+parents say  & y  & n \\
+BMI          & y  & n \\
+onway        & y  & n \\
+sched        & y  & n \\
+planning     & y  & n \\
+cool         & y  & n \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+We can see that the models are very dissimilar. This happens when there is
+multicollinearity, and when a small number of variables have very large effects,
+and the rest of the effects are relatively small. Standard diagnostic tests
+(i.e. examination of VIFs did not indicate excessive multicollinearity), but the
+possiblility remains, as many of the IVs have at least moderate correlation.
+
+But because the results obtained depend on the order in which variables are
+entered or removed, only tentative conclusions should be drawn at this stage.
+To me, the overwhelming effect is the---somewhat theoretically trivial---effect
+of being a walker for general mobility.  All other effects should be interpreted
+with caution, and substantiated by additional analysis, if possible.
+
+However a crucial difference in the modelling, apart from the order effect, is
+the use of interaction terms in John Spence's approach. However this is
+non-trivial to implement in a step-down procedure, as the huge number of
+terms in a single model leads almost invariably to numerical problems.
+
+These issues are, unfortuately, part and parcel of social science modelling:
+large measurement error compounding the curse of dimensionality.
+
+One way to address this problem is to compare the models based on explanatory
+power, either by information measures (AIC, BIC), classification measures
+(the $C$ index (AUC) or correlational measure of estimates with true values
+($R^2$ or $\tau_a$). (I wrote this before I conducted the comparison, so I can
+truly claim to be unbiased.)  The results are:
+
+<<make-comparisons>>=
+JW <- robcov(lrm(W2S ~ rcs(Dist, 3) + BMI_f
+          + onway + sched + planning
+          + parents_say + cool + regwalk,
+          x=T, y=T), cluster=School )
+JW_AIC <- fmt(AIC(JW),0)
+JW_BIC <- fmt(BIC(JW),0)
+
+JS_AIC <- fmt(AIC(mult_final),0)
+JS_BIC <- fmt(BIC(mult_final),0)
+@
+
+\begin{center}
+\begin{tabular}{lrrc}
+\toprule
+Criterion & JW & JS & Better \\
+\midrule
+AIC       & \Sexpr{JW_AIC}                 & \Sexpr{JS_AIC}   & JW\\
+BIC       & \Sexpr{JW_BIC}                 & \Sexpr{JS_BIC}   & JW\\
+$R^2$     & \Sexpr{fmt(JW$stats["R2"])}    & \Sexpr{fmt(mult_final$stats["R2"])}    & JW \\
+$\tau_a$  & \Sexpr{fmt(JW$stats["Tau-a"])} & \Sexpr{fmt(mult_final$stats["Tau-a"])} & JW \\
+$C$       & \Sexpr{fmt(JW$stats["C" ])}    & \Sexpr{fmt(mult_final$stats["C" ])}    & JW \\
+Brier     & \Sexpr{fmt(JW$stats["Brier"])} & \Sexpr{fmt(mult_final$stats["Brier"])} & -- \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+My model is better on all measures, \emph{statistically}, however the JS model
+may be superior on theoretical grounds. I do not have the knowlwedge to make
+this judgement, however.
+
+\end{document}
+

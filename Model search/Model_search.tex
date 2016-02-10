@@ -1,0 +1,368 @@
+\documentclass[a4paper]{article}
+\usepackage{longtable,booktabs,mathptmx,varioref,hyperref}
+
+\hypersetup{colorlinks=TRUE,linkcolor=blue}
+\title{Model search}
+\author{John Williams}
+
+\setcounter{secnumdepth}{9}
+\setcounter{tocdepth}{9}
+\newcommand{\R}{\textbf{\sffamily R}}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\thispagestyle{empty}
+\par
+\vspace{1em}
+TODO:
+\begin{itemize}
+\item Reconsider which variables  belong in which category of Panter et al.
+\item Figure out why correlates that are significant in the multivariate model aren't significant in univariate models.
+\end{itemize}
+
+
+
+\clearpage
+\section*{Introduction}
+This document contains the results of the ``univariate'' models, i.e. each
+potential covariate, with interaction terms for each of the three moderators.
+The classification of variables into the categories defined by Panter et al. is
+shown in Table~\vref{tab:variables-in-slots}.
+
+Variables that we have that don't fit into the categories defined by Panter et
+al. include:
+
+\begin{itemize}
+\item some household characteristics (e.g. number of siblings)
+\item regwalk, i.e. the frequency of using walking for general mobility
+\end{itemize}
+
+The \R\ code below is just to show which data file is being used. All
+analyses were performed using \R\ version~3.2.3, with package \textsf{rms}
+version~4.4.1 for logistic regression modelling.
+
+\begin{knitrout}\small
+\definecolor{shadecolor}{rgb}{0.961, 0.871, 0.702}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{file_n} \hlkwb{<-} \hlstr{"BEATS_SS_ForWalk2School_150507.sav"}
+\hlstd{dat} \hlkwb{<-} \hlkwd{read_spss}\hlstd{(}\hlkwd{fname}\hlstd{(dir_n, file_n))}
+\end{alltt}
+
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error: Unknown extension '.'}}\begin{alltt}
+\hlkwd{rm}\hlstd{(dir_n, file_n)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.961, 0.871, 0.702}\color{fgcolor}\begin{kframe}
+
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in eval(expr, envir, enclos): object 'dat' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in datadist(dat.ats): object 'dat.ats' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in attach(dat.ats): object 'dat.ats' not found}}\end{kframe}
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.961, 0.871, 0.702}\color{fgcolor}\begin{kframe}
+
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in attach(dat.ats): object 'dat.ats' not found}}\end{kframe}
+\end{knitrout}
+
+The correlates are being examined in this way (rather than entering all variables
+at once) beause of numerical problems with the estimation algorithm. But even
+with this reduced approach, not all moderators could be tested simultaneously.
+These problems are noted in the rightmost column in the table below.
+
+\begin{center}
+\renewcommand\arraystretch{0.9}
+\small
+\begin{tabular}{llcccccccc}
+\toprule
+Block                     & Variable & Main effect & \multicolumn{3}{c}{Moderators} & All\\
+\cmidrule(r){4-6}
+                          &             &     & Distance & Age & Sex  &     \\
+\midrule
+\multicolumn{2}{l}{1. \textbf{Physical environment} }   \\
+1.1 Neighbourhood         & nothing?      &     &     &     &     &     \\
+1.2 Destination           & nothing?      &     &     &     &     &     \\
+1.3 Route                 & distance      &  y  &     &     &     &     \\
+2. \textbf{Individual factors} \\
+\multicolumn{2}{l}{2.1  \textit{Parental factors}}   \\
+2.1.1 Characteristics     & nothing?      &     &     &     &     &     \\
+2.1.2 Attitudes*          & parents\_say  &  n  &  n  &  n  &  n  &  n  \\
+                          & parents\_safe &  y  &  n  &  n  &  y  &  y  \\
+                          & school\_says  &  n  &  n  &  n  &  n  &  y  \\
+\multicolumn{2}{l}{2.2 \textit{Perceptions of environmental factors}} \\
+2.2.1 Parental perceptions& nothing \\
+2.2.2  Youth perceptions* & onway         &  n  &  n  &  n  &  n  &  y  \\
+                          & time          &  n  &  n  &  n  &  n  &  y  \\
+                          & stuff         &  n  &  y  &  n  &  n  &  n  \\
+                          & weather       &  n  &  n  &  n  &  n  &  n  \\
+                          & hills         &  n  &  y  &  n  &  n  &  n  \\
+                          & boring\_r     &  n  &  n  &  n  &  n  &  y  \\
+                          & NEStConnect   &  n  &  n  &  n  &  n  &  n  \\
+                          & NGEsthetics   &  y  &  y  &  n  &  y  &  n  \\
+\multicolumn{2}{l}{2.3 \textit{Youth factors}} \\
+2.3.1 Characteristics     & BMI           &  y  &     &     &     &     \\
+2.3.2 Attitudes*          & interesting   &  n  &  y  &  n  &  y  &  n  \\
+                          & pleasant      &  y  &  n  &  n  &  y  &  n  \\
+                          & boring        &  n  &  y  &  n  &  n  &  y  \\
+                          & healthy       &  n  &  n  &  n  &  n  &  n  \\
+                          & useful        &  y  &  n  &  n  &  y  &  n  \\
+                          & safe          &  y  &  n  &  n  &  n  &  n  \\
+                          & exercise      &  n  &  n  &  n  &  n  &  n  \\
+                          & schedule      &  n  &  n  &  n  &  n  &  y  \\
+                          & planning      &  n  &  n  &  n  &  n  &  y  \\
+                          & sweaty        &  n  &  n  &  n  &  n  &  y  \\
+                          & unsafe        &  n  &  n  &  n  &  n  &  y  \\
+                          & tired         &  n  &  n  &  n  &  n  &  y  \\
+                          & desire        &  y  &  n  &  y  &  n  &  y  \\
+                          & confident     &  n  &  n  &  n  &  n  &  n  \\
+                          & intention     &  n  &  n  &  n  &  n  &  n  \\
+                          & cool          &  n  &  n  &  n  &  n  &  y  \\
+                          & friends\_dont &  n  &  n  &  n  &  n  &  y  \\
+                          & TSlike        &  n  &  n  &  n  &  n  &  y  \\
+\multicolumn{2}{l}{2.4 \textit{The decision process*} } \\
+                          & whodecides    &  n  &  n  &  n  &  n  &  y  \\
+                          & control       &  y  &  n  &  n  &  y  &  y  \\
+3  \textbf{External factors}       & \emph{none}   \\
+4  Other                  & regwalk       &  y  \\
+                          & schiclose     &  n  \\
+\bottomrule
+\end{tabular}
+\end{center}
+So, the following moderated factors will be included:
+
+\begin{enumerate}
+\item Youth attitudes: parents\_safe*Sex,
+  stuff*Dist, hills*Dist,
+  NGEsthetics*Dist, NGEsthetics*Sex,
+  weather*Dist,
+  interesting*Dist, interesting*Sex,
+  pleasant*Sex,
+  boring*Dist,
+  useful*Sex,
+  desire*Age
+\item Other: parents\_safe*Sex, control*Sex
+\end{enumerate}
+
+The results of the multivariate models can be found in
+Section~\vref{sec:multivariate}.
+
+%\begin{table}[ht]
+%\scriptsize
+\begin{kframe}
+
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in data.frame(name = names(dat.ats), label = label(dat.ats), slot = "{}"{}, : object 'dat.ats' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}BMI\_f"{}, c("{}slot"{}, "{}desc"{}, "{}mod"{})] <- c("{}2.3.1"{}, "{}Youth characteristics"{}, : object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}HMcars"{}, c("{}slot"{}, "{}desc"{}, "{}mod"{})] <- c("{}2.1.1"{}, "{}Parent characteristics"{}, : object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}NZDepCat3"{}, c("{}slot"{}, "{}desc"{}, "{}mod"{})] <- c("{}1.1"{}, "{}Attributes of neighbourhood"{}, : object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}PAGuideQ"{}, c("{}slot"{}, "{}desc"{}, "{}mod"{})] <- c("{}2.3.1"{}, "{}Youth characteristics"{}, : object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}ScrGuide"{}, c("{}slot"{}, "{}desc"{}, "{}mod"{})] <- c("{}2.3.1"{}, "{}Youth characteristics"{}, : object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}eth3"{}, c("{}slot"{}, "{}desc"{}, "{}mod"{})] <- c("{}2.3.1"{}, "{}Youth characteristics"{}, : object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}whodecides"{}, c("{}slot"{}, "{}desc"{}, "{}mod"{})] <- c("{}2.4"{}, "{}Decision process"{}, : object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}schiclose"{}, c("{}slot"{}, "{}desc"{}, "{}mod"{})] <- c("{}4"{}, "{}Other"{}, : object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}closest"{}, c("{}slot"{}, "{}desc"{}, "{}mod"{})] <- c("{}1.3"{}, "{}Attributes of route"{}, : object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}siblings"{}, c("{}slot"{}, "{}desc"{}, "{}mod"{})] <- c("{}2.1"{}, "{}Parent characteristics"{}, : object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}school\_decile\_n"{}, c("{}slot"{}, "{}desc"{}, "{}mod"{})] <- c("{}1.2"{}, : object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}regwalk"{}, c("{}slot"{}, "{}desc"{}, "{}mod"{})] <- c("{}4"{}, "{}Other"{}, : object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars[c(17:36, 41:43, 44, 57), c("{}slot"{}, "{}desc"{}, "{}mod"{})] <- c(rep("{}2.3.2"{}, : object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars[c(36:38, 60), c("{}slot"{}, "{}desc"{}, "{}mod"{})] <- c(rep("{}2.1.1"{}, : object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars[c(39:40), c("{}slot"{}, "{}desc"{}, "{}mod"{})] <- c(rep("{}2.1.2"{}, 2), : object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars[c(45:47, 49:50), c("{}slot"{}, "{}desc"{}, "{}mod"{})] <- c(rep("{}2.2.2"{}, : object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}control"{}, c("{}slot"{}, "{}desc"{}, "{}mod"{})] <- c("{}2.4"{}, "{}Decision process"{}, : object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}parents\_say"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}school\_says"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}parents\_safe"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}onway"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}time"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}stuff"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}sched"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}planning"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}sweaty"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}unsafe"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}tired"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}confd"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}desire"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}intention"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}cool"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}friends\_dont"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}friends\_say"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}parents\_say"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}TSlike"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}weather"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}hills"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}boring\_r"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}NEStConnect"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}NGEsthetics"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}interesting"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}pleasant"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}boring"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}healthy"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}useful"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}safe"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}exercise"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}whodecides"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in vars["{}control"{}, "{}done"{}] <- "{}y"{}: object 'vars' not found}}
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{Error in xtable(vars, caption = "{}Classification of variables into the Panter et al. framework"{}, : object 'vars' not found}}\end{kframe}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
