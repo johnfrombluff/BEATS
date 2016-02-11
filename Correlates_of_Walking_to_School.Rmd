@@ -5,7 +5,7 @@ output:
   html_document:
     toc: true
     number_sections: true
-    theme: yeti
+    theme: cerulean
     css: style.css
   Grmd::docx_document:
     fig_caption: TRUE
@@ -23,7 +23,7 @@ csl: /home/john/Dropbox/Writing/bib/CSL/apa.csl
 ---
 
 ```{r label=R-setup, echo=FALSE, include=FALSE, cache=FALSE}
-
+# “default”, “cerulean”, “journal”, “flatly”, “readable”, “spacelab”, “united”, “cosmo”
 # bibliography: /home/john/Dropbox/Writing/bib/all-refs.bib
 require( ggplot2 )
 require( scales )
@@ -417,7 +417,6 @@ aov2html( m2 )
 ```
 </center>
 
-Table `r I(options("table_counter"))`  shows Wald tests of the covariates. 
 
 
 ```{r ATS-final, dependson=c("ATS-m2", "data-setup"), results='asis'}
