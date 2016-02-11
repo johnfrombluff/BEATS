@@ -3,7 +3,7 @@
 ## Description
 This is just a playground for me to learn about **git** and **github**.  Nothing to see here, and no clever stuff to fork/steal.
 
-## Progress
+## Progress on learning Git
 
 So far, I've learned how to:
 
@@ -14,3 +14,6 @@ So far, I've learned how to:
 
 Next: *what*?
 
+## Progress on the project
+
+- First revision of Panter model committed

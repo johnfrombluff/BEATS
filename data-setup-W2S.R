@@ -78,7 +78,13 @@ dat$school_decile_n <- as.numeric(dat$school_decile)
 levels(dat$PAGuideQ)  <-c("No", "Yes")
 levels(dat$ScrGuide)  <-c("No", "Yes")
 
-# Demographics and other variables not used for models
+# Demographics and other variables not used for mo1els
+label(dat$WSno)            <- "I often can't be bothered to walk to school"
+label(dat$WCSrbor)         <- "The route is boring along the way"
+label(dat$WSintend)        <- "How often do you intend to walk to school?"
+label(dat$WS2wks)          <- "Number of times walked to school in the last two weeks"
+
+
 label(dat$Age_at_Survey)   <- "Age in years"
 label(dat$gender)          <- "Sex"
 label(dat$BMI_2cat)        <- "BMI"
