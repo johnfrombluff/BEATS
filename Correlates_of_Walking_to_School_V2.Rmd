@@ -1,0 +1,202 @@
+---
+title: "Correlates of Walking to School (V2)"
+author: "John Williams"
+output: 
+  Grmd::docx_document:
+    fig_caption: TRUE
+    force_captions: TRUE
+    toc: TRUE
+    toc_depth: 5
+  pdf_document:
+    toc: true
+    latex_engine: xelatex
+    keep_tex: true
+---
+
+```{r label=R-setup, echo=FALSE, include=FALSE, cache=FALSE}
+# bibliography: /home/john/Dropbox/Writing/bib/all-refs.bib
+require( ggplot2 )
+require( scales )
+require( Gmisc )
+require( rms )
+require( knitr )
+require(JMisc)
+# Evaluate the figure caption after the plot
+knitr::opts_knit$set(eval.after='fig.cap')
+
+# Use the table counter that the htmlTable() provides
+options(table_counter = TRUE)
+
+# Use the figCapNo() with roman letters
+options(fig_caption_no_roman = TRUE)
+
+#theme_set( theme_gray( base_size = 10 ))
+#theme_update( legend.key.width = unit( 3,"line") )
+options(width=120)
+options("show.signif.stars"=F)
+
+## set global chunk options
+opts_chunk$set(echo=FALSE,
+               cache=TRUE,
+               dpi=96,
+               fig.height=5,
+               fig.width=7,
+               prompt=F,
+               tidy=T,
+               highlight=T,
+               dev="png",
+               dev.args=list(type="cairo"),
+               fig.align='center',
+               fig.show='hold',
+               par=TRUE,
+               comment=NA,
+               background="wheat",
+               prompt=FALSE,
+               warning=FALSE,
+               message=FALSE)
+
+info   <- sessionInfo()
+r_ver  <- paste(info$R.version$major, info$R.version$minor, sep=".")
+barcol <- "wheat"
+```
+
+# Notes to the research team
+This file contains a report on the re-analysis of the Walking to School Model
+as dictated by John Spence. He told me to enter the variables in groups, according
+to the framework in Panter et al., viz.:
+
+1. Physical environment
+    1. Neighbourhood 
+    1. Destination  
+    1. Attributes of route  
+1. Individual factors
+    1. Parental factors
+        1. Parental characteristics (car, occupational status)
+        1. Parental attidudes (active transport, environment, climate change)
+    1. Perceptions of environment
+        1. Parental Perceptions
+        1. Youth Perceptions 
+    1. Youth factors
+        1. Youth characteristics, e.g. physical ability, ethnicity (!?!)
+        1. Youth attitudes, e.g independence, motivation to walk
+    1. Decision making process on mode choice
+1. External factors
+    1. Weather
+    1. Cost of travel
+    1. Government policy
+    
+Also age, sex and distance are treated as moderators on:
+
+1. The decision process (2.4)
+1. Youth perceptions (2.1)
+1. Youth attitudes (3.2)
+1. Parental attitudes (2.1)
+
+## Data Setup
+The **R** code below is just to show which data file is being used.
+
+```{r label="read-data", echo=2:4, size="small", prompt=FALSE}
+require(foreign)
+dir  <- "/home/john/Dropbox/Research/Collaboration/BEATS/John/W2S"
+file <- "BEATS_SS_ForWalk2School_150507.sav"
+dat <- read.spss( paste(dir, file, sep="/"), to.data.frame=TRUE )
+rm(dir, file)
+```
+
+
+```{r label=data-setup, results='hide', cache=TRUE, dependson="read-data"}
+source( "data-setup-W2S.R")
+```
+
+# Modeling
+**Notes**:
+
+- Because the data were collected within schools, robust standard errors were 
+calculated using school as a cluster variable. 
+- Following standard practice (e.g. Hosmer & Lemeshow, 2013) models with areas 
+under the  ROC curve greater  than 0.9 are labelled "outstanding", and those 
+with ROC areas between 0.8 and 0.9 are labelled "excellent". These adjectives
+used in this context *are not superlatives*, they are merely social conventions, 
+exactly the same as labelling $p$-values less than 5% as "significant".
+
+## Univariate models
+It is not possible to fit a logistic regression model with such a huge number of
+parameters (one for each variable, plus three more for each possible two-way 
+interaction). Hence a series of reduced models was run on each individual 
+potential covariate, with the aim of "pre-screening" the full model (i.e. not
+entering interation terms in the multivariate model for which there was no
+significant univariate interactions).
+
+<small>
+```{r uni_onway, dependson=c("read-data"), results='asis'}
+require(rms)
+dat.m1   <- dat.ats[ complete.cases(dat.ats), ]
+m1.ddist <- datadist(dat.m1)
+options(datadist="m1.ddist")
+uni_onway <- robcov(lrm(ATS_f ~ Dist2School*schiclose,x=T, y=T, data=dat.m1 ), dat.m1$school)
+uni_onway.gof <- LR.summary( uni_onway, html = T, anova=T, br=FALSE )
+```
+
+```{r multi_onway, dependson=c("read-data"), results='asis'}
+dat.m1   <- dat.ats[ complete.cases(dat.ats), ]
+m1.ddist <- datadist(dat.m1)
+options(datadist="m1.ddist")
+uni_onway <- robcov(lrm(ATS_f ~ Dist2School
+          + school_decile_n       # Attributes of the neighbourhood (1.1)
+          + n_cars + NZDepCat3    # Parental characteristics (2.1)
+          + Dist2School*schiclose + Dist2School*closest  # Youth perceptions (2.2.2)
+          + BMI_f                 # Youth characteristics (2.3)
+          + Dist2School*whodecides + Dist2School*control, # Decision making process (2.4)
+          x=T, y=T, data=dat.m1 ), dat.m1$school)
+#LR.summary( uni_onway, html = F, anova=F )
+uni_onway.gof <- LR.summary( uni_onway, html = T, anova=F )
+```
+</small>
+
+```{r ATS-m1, dependson=c("read-data"), results='hide'}
+source("data-setup.R")
+options(contrasts=c("contr.treatment", "contr.treatment"))
+dat.m1   <- dat.ats[ complete.cases(dat.ats), ]
+require(rms)
+m1.ddist <- datadist(dat.m1)
+options(datadist="m1.ddist")
+m1 <- robcov(lrm(ATS_f ~ rcs( Dist2School, knots=3)
+          + BMI_f + n_cars + NZDepCat3 + school_decile_n 
+          + whodecides + control + schiclose + closest 
+          + interesting + pleasant + boring + useful + safe + exercise 
+          + onway + stuff + sched + planning + sweaty + unsafe + tired 
+          + desire + confd 
+          + adults + parents_walk + parents_safe 
+          + parents_say + friends_say + school_says + cool + friends_dont 
+          + weather + hills + regwalk 
+          + NEStConnect + NGEsthetics, 
+          x=T, y=T, data=dat.m1 ), dat.m1$school)
+m1.gof <- LR.summary( m1, html = T, anova=F )
+```
+
+<center>
+```{r m1_gof, cache=FALSE}
+htmlTable(m1.gof$sf, 
+          rnames=F, 
+          align="r", 
+          header=c("Index", "<span style='padding:5mm'/>", "Statistic", "<span style='padding:5mm'/>"), 
+          caption="Inital model goodness of fit and summary information")
+```
+</center>
+
+
+<center>
+```{r m1_anova, results='asis'}
+#aov2html( m1 )
+```
+</center>
+  
+
+
+## Interpretation
+The final model has absolutely outstanding predictive and discriminant validity, 
+and all  effects can be interpreted *ceteris paribus*. It also has good face 
+validity.
+# Summary
+All logistic regression modelling results are exceptionally good in terms of 
+discrimination, predictive ability and face validity. 
