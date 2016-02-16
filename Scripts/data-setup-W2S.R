@@ -1,8 +1,9 @@
-#detach(package:rms)
+getLab <- function(dat, var) {require(stringr); str_trim(attributes(dat)$variable.labels[grepl(paste0("^",var,"$"), attributes(dat)$names)]) }
+
+dat$ATS_f <- dat$ATvsOther; levels(dat$ATS_f) <-c("Don't walk", "Walk")
+attributes(dat)$variable.labels[length(attributes(dat)$variable.labels)+1] <- "Walking vs. any other mode"
+
 require( car )
-#dat$ATS_f      <- factor(dat$ATS_wMulti_2c, labels=c("Don't walk", "Walk") )
-dat$ATS <- dat$ATS_Corrected_Clean
-dat$ATS_f      <- dat$ATvsMT; levels(dat$ATS_f) <-c("Don't walk", "Walk")
 dat$whodecides <- recode(  dat$tsdecision, "'My parents'='Other(s)'; 'School'='Other(s)'")
 #dat$BMI_f      <- ordered( recode(dat$BMI_4cat, "1=0;2=1;3=2"), labels=c("Normal", "Overweightl", "Obese") )
 dat$BMI_f      <- ordered( recode(dat$BMI_4cat, " 'Underweight'='Normal Weight' ") )
@@ -99,7 +100,8 @@ label(dat$whodecides)      <- "Who decides how you travel"
 label(dat$school_decile_n) <- "School decile"
 label(dat$NEStConnect)     <- "Connectivity"
 label(dat$NGEsthetics)     <- "Aesthetics"
-label(dat$Dist2School)     <- "Distance to school from home"
+label(dat$Dist2School_GoogleMaps)     <- "Distance to school (GM)"
+label(dat$Dist2School_GIS)     <- "Distance to school (GIS)"
 label(dat$BMI_f)           <- "BMI"
 label(dat$BMI_4cat)        <- "Body Mass Index"
 label(dat$eth3)            <- "Ethnic category"
@@ -109,7 +111,6 @@ label(dat$TscCarMy)            <- "Travel to School: Car (mine)"
 label(dat$TscBusPub)           <- "Travel to School: Bus (public)"
 label(dat$TscBusSc)            <- "Travel to School: Bus (school"
 label(dat$TSlike)              <- "Do you like the way you usually travel to school?"
-label(dat$ATS)                 <- "ATS (3 categories)"
 label(dat$BMI_4cat)            <- "BMI (4 categories)"
 label(dat$cars3)               <- "Cars at home (3 categories)"
 dat$ID <- as.numeric(as.character(dat$studyID1))
@@ -120,23 +121,7 @@ dat$school <- factor(dat$school,
                               "St. Hilda's", "Taeri"))
 label(dat$school) <- "School"
 
-ats.vars <- c("ID", "school", "ATS_f", "gender",
-              "HMcars", "NZDepCat3", "PAGuideQ",
-              "ScrGuide", "whodecides",
-              "schiclose",
-              "Dist2School",
-              "siblings", "Age_at_Survey", "school_decile_n",
-              "interesting", "pleasant", "boring",
-              "healthy", "useful", "safe", "exercise", "onway", "time",
-              "stuff", "sched", "planning", "sweaty", "unsafe", "tired",
-              "desire", "confd", "control", "intention", "adults", "n_cars",
-              "parents_walk", "parents_safe","parents_say", "friends_say",
-              "school_says", "cool", "friends_dont", "weather", "boring_r",
-              "hills", "regwalk",
-              "NEStConnect", "NGEsthetics",
-              "eth3",
-              "TscWalk", "TscCarOth", "TscCarMy", "TscBusPub", "TscBusSc",
-              "TSlike", "ATS", "BMI_4cat", "cars3", "tsdecision")
+ats_vars <- c( 'school', 'ATS_f', 'ATvsOther', 'Dist2School_GIS', 'gender', 'Age_at_Survey', 'HMcars', 'WSpsh', 'WSpunsafe', 'WSAint', 'WSAstim', 'WSAgood', 'WSAuseful', 'WSAsafe', 'WCSone', 'WSchat', 'WSfsh', 'WSbfri', 'WSf5ws', 'WSbwant', 'WStired', 'WSno', 'WSbstuff', 'WSbsweat', 'WSbplan', 'WSbsched', 'F3_landuseaccess', 'WSbdist', 'WStime', 'WSbfootp', 'WCShills', 'TSlike', 'WSpwalk', 'WSAnice', 'WSexercise', 'WSbsafe', 'WCStraffic', 'WCScross', 'WCSrbor', 'WSbweather', 'WCSlights', 'WSbcool')
 
 # Subset the data object to contain only the variables of interest
 #dat.ats <- dat[ dat$boarder2 == "Not a boarder", ats.vars]
@@ -144,25 +129,21 @@ cutoff <- 8000
 
 # Remove implausible cases
 outs <- dat$Dist2School > cutoff & dat$ATS_f =="Walk"
-dat  <- dat[!outs, ]
+#dat  <- dat[!outs, ]
 
-dat.ats <- dat[ , ats.vars]
 #dat.ats <- dat[ dat$boarder == 1, ]
-dat.full <- dat[complete.cases(dat$Dist2School, dat$ATS_f),
-                c("Dist2School", "ATS_f") ]
+#dat.full <- dat[complete.cases(dat$Dist2School, dat$ATS_f),
+#                c("Dist2School", "ATS_f") ]
 
-names( dat.ats )[ 2] <- "School"
-names( dat.ats) [ 3] <- "W2S"
-names( dat.ats )[ 4] <- "Sex"
-names( dat.ats )[12] <- "Dist"
-names( dat.ats )[15] <- "Age"
-label(dat.ats[,1]) <- "Respondent ID"
+dat.ats <- dat[ , ats_vars]
+
 
 #rm(dat.ats, dat.full, dat, cutoff, outs, ats.vars)
 
-dat.ats <- dat.ats[ dat.ats$Dist2School <= cutoff, ]
-dat.ats <- dat.ats[ complete.cases(dat.ats$W2S, dat.ats$Dist, dat.ats$School
+#dat.ats <- dat.ats[ dat.ats$Dist2School <= cutoff, ]
+#dat.ats <- dat.ats[ complete.cases(dat.ats$W2S, dat.ats$Dist, dat.ats$School
     #, dat.ats$parents_safe, dat.ats$parents_say, dat.ats$NEStConnect
     #, dat.ats$NGEsthetics
-    ), ]
+#    ), ]
 
+rm(cutoff, outs)

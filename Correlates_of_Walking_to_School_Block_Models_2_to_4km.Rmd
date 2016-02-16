@@ -1,0 +1,202 @@
+---
+title: "Correlates of Walking to School"
+author: "John Williams"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+    theme: cerulean
+    css: Scripts/style.css
+  Grmd::docx_document:
+    fig_caption: TRUE
+    force_captions: TRUE
+    toc: TRUE
+    toc_depth: 5
+    css: Scripts/style.css 
+  pdf_document:
+    toc: true
+    latex_engine: xelatex
+    keep_tex: true
+bibliography: /home/john/Dropbox/Writing/bib/all-refs.bib
+csl: /home/john/Dropbox/Writing/bib/CSL/apa.csl
+
+---
+
+```{r label=R-setup, echo=FALSE, include=FALSE, cache=FALSE}
+# “default”, “cerulean”, “journal”, “flatly”, “readable”, “spacelab”, “united”, “cosmo”
+# bibliography: /home/john/Dropbox/Writing/bib/all-refs.bib
+require( ggplot2 )
+require( scales )
+require( Gmisc )
+require( rms )
+require( knitr )
+require( JMisc )
+# Evaluate the figure caption after the plot
+knitr::opts_knit$set(eval.after='fig.cap')
+
+# Use the table counter that the htmlTable() provides
+options(table_counter = TRUE)
+
+# Use the figCapNo() with roman letters
+options(fig_caption_no_roman = TRUE)
+
+#theme_set( theme_gray( base_size = 10 ))
+#theme_update( legend.key.width = unit( 3,"line") )
+options(width=120)
+options("show.signif.stars"=F)
+
+## set global chunk options
+opts_chunk$set(echo=FALSE,
+               cache=FALSE,
+               dpi=96,
+               fig.height=5,
+               fig.width=7,
+               prompt=F,
+               tidy=T,
+               highlight=T,
+               dev="png",
+               dev.args=list(type="cairo"),
+               fig.align='center',
+               fig.show='hold',
+               par=TRUE,
+               comment=NA,
+               background="wheat",
+               prompt=FALSE,
+               warning=FALSE,
+               message=FALSE)
+
+info   <- sessionInfo()
+r_ver  <- paste(info$R.version$major, info$R.version$minor, sep=".")
+barcol <- "wheat"
+require(JMisc)
+```
+
+
+# Data description
+
+## Data file
+The **R** code below is just to show which data file is being used.
+
+```{r label="read-data", echo=2:4, size="small", prompt=FALSE}
+require(foreign)
+d  <- "/home/john/Dropbox/Research/Collaboration/BEATS/John/Analysis/Correlates of ATS/"
+f <- "BEATS_SS_ForWalk2School_160216_COMPLETEwithGIS.sav"
+dat <- read.spss(fname(f, d), to.data.frame = TRUE, use.value.labels = FALSE)
+rm(d, f)
+```
+
+```{r label=data-setup, results='hide'}
+source("Scripts/data-setup-W2S.R")
+```
+
+## Variables
+
+```{r mt, results='asis'}
+cat("Name               Label\n-----------------  -----\n")
+for(v in ats_vars)
+   cat(sprintf("%-17s  %20s\n", v, getLab(dat, v)))
+```
+
+
+# Modeling
+
+1. All cases in the file with a value of the variable **Include** equal 
+   to 1 were included.  
+1. Only cases where the distance to school (GIS was less than or equal to 2km 
+   were included
+1. Every potential covariate on the list that Sandy supplied was ran as a 
+   "univariate" model in the sense above (i.e. the variable in question, plus
+   the "moderators")
+1. All the covariates that were significant at the 5% level were entered in a 
+   multivariate model.
+1. This procedure resulted in the models below. Given the relatively large 
+   sample size, large number of IVs and large number of hypothesis tests, I 
+   strongly recommend using the 1% level to judge statistical signficance.
+1. The effect of distance on the probability of walking to school is clearly 
+   non-linear, so the distance variable was transformed using a restricted cubic 
+   spline (with three knots).
+1. Because the data were collected within schools, robust standard errors were 
+   calculated using school as a cluster variable. 
+
+The **R** code below is to show which variables are included in which block, 
+which correspond to elements of the Panter model.
+
+- **EF**: External factors
+- **PF**: Parental factors
+- **YF**: Youth factos
+- **PE**: Physical environment
+
+```{r vars-setup, echo=TRUE}
+mods <- "ATS_f ~ rcs(Dist2School_GIS, 3) + gender + Age_at_Survey" 
+EF <- "+ WSbweather"
+PF <- "+ HMcars + WSpsh + WSpunsafe + WSpwalk"
+YF <- "+ WSAint + WSAnice + WSAstim + WSAgood + WSAuseful + WSAsafe + WCSone + WSchat + WSfsh + WSbfri + WSbcool + WSf5ws + WSbwant + WStired + WSno + WSbstuff + WSbsweat + WSbplan + WSbsched"
+PE <- "+ F3_landuseaccess + WSbdist + WStime + WSbsafe + WSbfootp + WCSlights + WCStraffic + WCShills + WCSrbor"
+```
+
+## Model 0 
+Here are the results of including all the significant "univariate" correlates,
+plus the non-significant "moderators".  
+
+**Note**: Dist2School' is the non-linear component of distance to school.
+
+```{r m0, echo=TRUE}
+m0.dat <- dat.ats[complete.cases(dat.ats$school, dat.ats$Dist2School_GIS) & dat.ats$Dist2School_GIS > 2000 & dat$Dist2School_GIS <= 4000,]
+m.ddist <- datadist(m0.dat )
+options( datadist='m.ddist' )
+(m0 <- robcov(lrm( as.formula(paste(mods, EF, PE, PF, YF )), x=T, y=T, data=m0.dat ), cluster=m0.dat$school))
+```
+Because **Dlikedriven**  and **DParents** are not significant and including them
+reduces the sample size considerably, I have removed them from all models.
+
+## Model 1 
+- Main moderators
+- External factors
+- Physical environment characteristics
+
+
+
+```{r m1}
+(m1 <- robcov(lrm(as.formula(paste(mods, EF, PE)), x=T, y=T, data=m0.dat ), cluster=m0.dat$school ))
+```
+  
+## Model 2 
+
+- Main moderators
+- External factors
+- Physical environment characteristics 
+- Parental characteristics 
+- Parental attitudes
+
+```{r m2}
+(m2 <- robcov(lrm(as.formula(paste(mods, EF, PE, PF)), x=T, y=T, data=m0.dat ), cluster=m0.dat$school))
+```
+
+## Model 3
+(Same as Model 0)
+
+- Main moderators
+- External factors
+- Physical environment characteristics 
+- Parental characteristics 
+- Parental attitudes
+- Youth characteristics
+- Youth attitudes
+
+```{r m3}
+(m3 <- robcov(lrm(as.formula(paste(mods, EF, PE, PF, YF)), x=T, y=T, data=m0.dat ), cluster=m0.dat$school))
+```
+
+
+
+## Model 4
+
+To remove the non-significant variables, we can employ an automatic backward 
+stepwise procedure.  I don't necessarily recommend this procedure, it's just
+here for an example.
+
+```{r bw, echo=TRUE}
+fastbw(update(m3))
+```
+
+
